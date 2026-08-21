@@ -1,18 +1,25 @@
 import {
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
-import { colors, radius, spacing } from "../constants/theme";
+import {
+  colors,
+  radius,
+  spacing,
+} from "../constants/theme";
 
 type GameCardProps = {
   name: string;
-  category?: string;
+  category?: string | null;
   imageUrl?: string | null;
-  gamesPlayed?: number;
+  minPlayers?: number | null;
+  maxPlayers?: number | null;
+  minPlaytime?: number | null;
+  maxPlaytime?: number | null;
   onPress?: () => void;
 };
 
@@ -20,9 +27,26 @@ export default function GameCard({
   name,
   category,
   imageUrl,
-  gamesPlayed = 0,
+  minPlayers,
+  maxPlayers,
+  minPlaytime,
+  maxPlaytime,
   onPress,
 }: GameCardProps) {
+  const players =
+    minPlayers && maxPlayers
+      ? `${minPlayers}-${maxPlayers} players`
+      : minPlayers
+        ? `${minPlayers}+ players`
+        : null;
+
+  const playtime =
+    minPlaytime && maxPlaytime
+      ? `${minPlaytime}-${maxPlaytime} min`
+      : minPlaytime
+        ? `${minPlaytime}+ min`
+        : null;
+
   return (
     <TouchableOpacity
       style={styles.container}
@@ -30,15 +54,23 @@ export default function GameCard({
       activeOpacity={0.8}
     >
       {imageUrl ? (
-        <Image source={{ uri: imageUrl }} style={styles.image} />
+        <Image
+          source={{ uri: imageUrl }}
+          style={styles.image}
+        />
       ) : (
         <View style={styles.imagePlaceholder}>
-          <Text style={styles.placeholderText}>🎲</Text>
+          <Text style={styles.placeholderText}>
+            🎲
+          </Text>
         </View>
       )}
 
       <View style={styles.content}>
-        <Text style={styles.name} numberOfLines={1}>
+        <Text
+          style={styles.name}
+          numberOfLines={2}
+        >
           {name}
         </Text>
 
@@ -48,9 +80,17 @@ export default function GameCard({
           </Text>
         )}
 
-        <Text style={styles.played}>
-          Played {gamesPlayed} {gamesPlayed === 1 ? "time" : "times"}
-        </Text>
+        {players && (
+          <Text style={styles.info}>
+            👥 {players}
+          </Text>
+        )}
+
+        {playtime && (
+          <Text style={styles.info}>
+            ⏱️ {playtime}
+          </Text>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -58,12 +98,13 @@ export default function GameCard({
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: colors.border,
-    width: 180,
+    maxWidth: "48%",
   },
 
   image: {
@@ -100,8 +141,8 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  played: {
-    marginTop: spacing.sm,
+  info: {
+    marginTop: 6,
     fontSize: 12,
     color: colors.textSecondary,
   },

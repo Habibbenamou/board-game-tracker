@@ -3,21 +3,36 @@ import {
   FlatList,
   StyleSheet,
   Text,
+  TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
 
-import { useEffect, useState } from "react";
+import {
+  router,
+} from "expo-router";
+
+import { useEffect, useMemo, useState } from "react";
 
 import GameCard from "../../components/GameCard";
-import { colors, spacing } from "../../constants/theme";
-import { getGames } from "../../services/gameService";
+import {
+  colors,
+  radius,
+  spacing,
+} from "../../constants/theme";
+
+import {
+  getGames,
+  type Game,
+} from "../../services/gameService";
 
 export default function GamesScreen() {
-  const [games, setGames] = useState<any[]>([]);
+  const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(
     null
   );
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     loadGames();
@@ -41,6 +56,27 @@ export default function GamesScreen() {
       setLoading(false);
     }
   }
+
+  const filteredGames = useMemo(() => {
+    const query = search
+      .trim()
+      .toLowerCase();
+
+    if (!query) {
+      return games;
+    }
+
+    return games.filter((game) => {
+      return (
+        game.name
+          .toLowerCase()
+          .includes(query) ||
+        game.category
+          ?.toLowerCase()
+          .includes(query)
+      );
+    });
+  }, [games, search]);
 
   if (loading) {
     return (
@@ -72,13 +108,23 @@ export default function GamesScreen() {
       <Text style={styles.title}>
         Games
       </Text>
-
+    
       <Text style={styles.subtitle}>
         {games.length} games in your collection
       </Text>
 
+      
+      
+      <TextInput
+        value={search}
+        onChangeText={setSearch}
+        placeholder="Search games..."
+        placeholderTextColor={colors.textMuted}
+        style={styles.search}
+      />
+
       <FlatList
-        data={games}
+        data={filteredGames}
         keyExtractor={(item) =>
           String(item.id)
         }
@@ -91,9 +137,39 @@ export default function GamesScreen() {
             name={item.name}
             category={item.category}
             imageUrl={item.image_url}
+            minPlayers={item.min_players}
+            maxPlayers={item.max_players}
+            minPlaytime={
+              item.min_playtime_minutes
+            }
+            maxPlaytime={
+              item.max_playtime_minutes
+            }
           />
         )}
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Text style={styles.emptyIcon}>
+              🎲
+            </Text>
+
+            <Text style={styles.emptyTitle}>
+              No games found
+            </Text>
+
+            <Text style={styles.emptyText}>
+              Try a different search.
+            </Text>
+          </View>
+        }
       />
+      
+      <TouchableOpacity style={styles.addButton}
+        onPress={() => router.push("/add-game")}>
+        <Text style={styles.addButtonText}>
+            + Add Game
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -118,9 +194,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
 
+  addButton: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    height: 46,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  addButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+
+  search: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    height: 48,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    color: colors.text,
+    fontSize: 15,
+  },
+
   list: {
     padding: spacing.lg,
     gap: spacing.md,
+    paddingBottom: 100,
   },
 
   row: {
@@ -144,5 +250,26 @@ const styles = StyleSheet.create({
   errorText: {
     color: colors.danger,
     textAlign: "center",
+  },
+
+  empty: {
+    alignItems: "center",
+    marginTop: 80,
+  },
+
+  emptyIcon: {
+    fontSize: 48,
+  },
+
+  emptyTitle: {
+    marginTop: spacing.md,
+    fontSize: 20,
+    fontWeight: "700",
+    color: colors.text,
+  },
+
+  emptyText: {
+    marginTop: 6,
+    color: colors.textSecondary,
   },
 });
