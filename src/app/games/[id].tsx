@@ -16,7 +16,12 @@ import {
   useLocalSearchParams,
 } from "expo-router";
 
-import { useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
@@ -25,18 +30,22 @@ import {
   spacing,
 } from "../../constants/theme";
 
-import { getGameById } from "../../services/gameService";
+import {
+  getGameById,
+} from "../../services/gameService";
 
 import type { Tables } from "../../types/database";
 
 type Game = Tables<"games">;
 
 export default function GameDetailsScreen() {
-  const { id } = useLocalSearchParams<{
-    id: string;
-  }>();
+  const { id } =
+    useLocalSearchParams<{
+      id: string;
+    }>();
 
-  const insets = useSafeAreaInsets();
+  const insets =
+    useSafeAreaInsets();
 
   const [game, setGame] =
     useState<Game | null>(null);
@@ -47,35 +56,62 @@ export default function GameDetailsScreen() {
   const [error, setError] =
     useState(false);
 
+  /**
+   * Load the game from Supabase.
+   */
+  const loadGame = useCallback(
+    async () => {
+      if (!id) {
+        setError(true);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(false);
+
+        const data =
+          await getGameById(id);
+
+        setGame(data);
+      } catch (error) {
+        console.error(
+          "Error loading game:",
+          error
+        );
+
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [id]
+  );
+
   useEffect(() => {
-    if (!id) {
-      setError(true);
-      setLoading(false);
-      return;
-    }
-
     loadGame();
-  }, [id]);
+  }, [loadGame]);
 
-  async function loadGame() {
-    try {
-      setLoading(true);
-      setError(false);
-
-      const data = await getGameById(id);
-
-      setGame(data);
-    } catch (error) {
-      console.error(
-        "Error loading game:",
-        error
+  /**
+   * Reload the game whenever this screen
+   * becomes active again.
+   *
+   * This is useful after editing a game.
+   */
+  useEffect(() => {
+    const unsubscribe =
+      router.addListener?.(
+        "focus",
+        () => {
+          loadGame();
+        }
       );
 
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  }
+    return () => {
+      unsubscribe?.();
+    };
+  }, [loadGame]);
 
   async function openUrl(
     url: string | null,
@@ -115,6 +151,19 @@ export default function GameDetailsScreen() {
         "Unable to open this link."
       );
     }
+  }
+
+  function handleEdit() {
+    if (!game) {
+      return;
+    }
+
+    router.push({
+      pathname: "/edit-game",
+      params: {
+        id: game.id,
+      },
+    });
   }
 
   if (loading) {
@@ -162,7 +211,11 @@ export default function GameDetailsScreen() {
             style={styles.backButton}
             onPress={() => router.back()}
           >
-            <Text style={styles.backButtonText}>
+            <Text
+              style={
+                styles.backButtonText
+              }
+            >
               Go Back
             </Text>
           </TouchableOpacity>
@@ -193,7 +246,6 @@ export default function GameDetailsScreen() {
 
   return (
     <>
-      {/* Disable Expo Router's default header */}
       <Stack.Screen
         options={{
           headerShown: false,
@@ -212,7 +264,9 @@ export default function GameDetailsScreen() {
                 ) + 40,
             },
           ]}
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator={
+            false
+          }
         >
           {/* Custom Header */}
           <View style={styles.header}>
@@ -221,7 +275,11 @@ export default function GameDetailsScreen() {
               onPress={() => router.back()}
               activeOpacity={0.7}
             >
-              <Text style={styles.backIconText}>
+              <Text
+                style={
+                  styles.backIconText
+                }
+              >
                 ‹
               </Text>
             </TouchableOpacity>
@@ -233,7 +291,9 @@ export default function GameDetailsScreen() {
               {game.name}
             </Text>
 
-            <View style={styles.headerSpacer} />
+            <View
+              style={styles.headerSpacer}
+            />
           </View>
 
           {/* Game image */}
@@ -246,15 +306,23 @@ export default function GameDetailsScreen() {
               resizeMode="cover"
             />
           ) : (
-            <View style={styles.imagePlaceholder}>
+            <View
+              style={
+                styles.imagePlaceholder
+              }
+            >
               <Text
-                style={styles.placeholderIcon}
+                style={
+                  styles.placeholderIcon
+                }
               >
                 🎲
               </Text>
 
               <Text
-                style={styles.placeholderText}
+                style={
+                  styles.placeholderText
+                }
               >
                 No image
               </Text>
@@ -268,9 +336,15 @@ export default function GameDetailsScreen() {
             </Text>
 
             {game.category ? (
-              <View style={styles.categoryBadge}>
+              <View
+                style={
+                  styles.categoryBadge
+                }
+              >
                 <Text
-                  style={styles.categoryText}
+                  style={
+                    styles.categoryText
+                  }
                 >
                   {game.category}
                 </Text>
@@ -282,32 +356,48 @@ export default function GameDetailsScreen() {
           {playerCount || playTime ? (
             <View style={styles.infoRow}>
               {playerCount ? (
-                <View style={styles.infoCard}>
-                  <Text style={styles.infoIcon}>
+                <View
+                  style={styles.infoCard}
+                >
+                  <Text
+                    style={styles.infoIcon}
+                  >
                     👥
                   </Text>
 
-                  <Text style={styles.infoLabel}>
+                  <Text
+                    style={styles.infoLabel}
+                  >
                     Players
                   </Text>
 
-                  <Text style={styles.infoValue}>
+                  <Text
+                    style={styles.infoValue}
+                  >
                     {playerCount}
                   </Text>
                 </View>
               ) : null}
 
               {playTime ? (
-                <View style={styles.infoCard}>
-                  <Text style={styles.infoIcon}>
+                <View
+                  style={styles.infoCard}
+                >
+                  <Text
+                    style={styles.infoIcon}
+                  >
                     ⏱
                   </Text>
 
-                  <Text style={styles.infoLabel}>
+                  <Text
+                    style={styles.infoLabel}
+                  >
                     Play time
                   </Text>
 
-                  <Text style={styles.infoValue}>
+                  <Text
+                    style={styles.infoValue}
+                  >
                     {playTime}
                   </Text>
                 </View>
@@ -318,99 +408,190 @@ export default function GameDetailsScreen() {
           {/* Description */}
           {game.description ? (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
+              <Text
+                style={styles.sectionTitle}
+              >
                 About the game
               </Text>
 
-              <Text style={styles.description}>
+              <Text
+                style={styles.description}
+              >
                 {game.description}
               </Text>
             </View>
           ) : null}
 
-          {/* Rules */}
-          {game.rules_url ? (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                Game rules
+          {/* Edit Game */}
+          <View style={styles.section}>
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={handleEdit}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={styles.editIcon}
+              >
+                ✏️
               </Text>
 
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() =>
-                  openUrl(
-                    game.rules_url,
-                    "Game rules"
-                  )
-                }
-                activeOpacity={0.8}
+              <View
+                style={styles.actionContent}
               >
-                <Text style={styles.actionIcon}>
-                  📖
+                <Text
+                  style={
+                    styles.editButtonTitle
+                  }
+                >
+                  Edit Game
                 </Text>
 
-                <View style={styles.actionContent}>
-                  <Text
-                    style={styles.actionTitle}
-                  >
-                    Open Game Guide
-                  </Text>
-
-                  <Text
-                    style={styles.actionSubtitle}
-                  >
-                    View the rules in your browser
-                  </Text>
-                </View>
-
-                <Text style={styles.arrow}>
-                  ›
+                <Text
+                  style={
+                    styles.editButtonSubtitle
+                  }
+                >
+                  Update this game's information
                 </Text>
-              </TouchableOpacity>
-            </View>
-          ) : null}
+              </View>
 
-          {/* Official website */}
-          {game.official_url ? (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                Official website
+              <Text style={styles.arrow}>
+                ›
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Game Rules */}
+          <View style={styles.section}>
+            <Text
+              style={styles.sectionTitle}
+            >
+              Game rules
+            </Text>
+
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                !game.rules_url &&
+                  styles.actionButtonDisabled,
+              ]}
+              onPress={() =>
+                openUrl(
+                  game.rules_url,
+                  "Game rules"
+                )
+              }
+              activeOpacity={
+                game.rules_url ? 0.8 : 1
+              }
+            >
+              <Text
+                style={styles.actionIcon}
+              >
+                📖
               </Text>
 
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() =>
-                  openUrl(
-                    game.official_url,
-                    "Official website"
-                  )
-                }
-                activeOpacity={0.8}
+              <View
+                style={styles.actionContent}
               >
-                <Text style={styles.actionIcon}>
-                  🌐
+                <Text
+                  style={[
+                    styles.actionTitle,
+                    !game.rules_url &&
+                      styles.disabledText,
+                  ]}
+                >
+                  Open Game Guide
                 </Text>
 
-                <View style={styles.actionContent}>
-                  <Text
-                    style={styles.actionTitle}
-                  >
-                    Visit Official Website
-                  </Text>
+                <Text
+                  style={[
+                    styles.actionSubtitle,
+                    !game.rules_url &&
+                      styles.disabledText,
+                  ]}
+                >
+                  {game.rules_url
+                    ? "View the rules in your browser"
+                    : "No guide URL added"}
+                </Text>
+              </View>
 
-                  <Text
-                    style={styles.actionSubtitle}
-                  >
-                    Open the game website
-                  </Text>
-                </View>
-
-                <Text style={styles.arrow}>
+              {game.rules_url ? (
+                <Text
+                  style={styles.arrow}
+                >
                   ›
                 </Text>
-              </TouchableOpacity>
-            </View>
-          ) : null}
+              ) : null}
+            </TouchableOpacity>
+          </View>
+
+          {/* Official Website */}
+          <View style={styles.section}>
+            <Text
+              style={styles.sectionTitle}
+            >
+              Official website
+            </Text>
+
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                !game.official_url &&
+                  styles.actionButtonDisabled,
+              ]}
+              onPress={() =>
+                openUrl(
+                  game.official_url,
+                  "Official website"
+                )
+              }
+              activeOpacity={
+                game.official_url ? 0.8 : 1
+              }
+            >
+              <Text
+                style={styles.actionIcon}
+              >
+                🌐
+              </Text>
+
+              <View
+                style={styles.actionContent}
+              >
+                <Text
+                  style={[
+                    styles.actionTitle,
+                    !game.official_url &&
+                      styles.disabledText,
+                  ]}
+                >
+                  Visit Official Website
+                </Text>
+
+                <Text
+                  style={[
+                    styles.actionSubtitle,
+                    !game.official_url &&
+                      styles.disabledText,
+                  ]}
+                >
+                  {game.official_url
+                    ? "Open the game website"
+                    : "No official website added"}
+                </Text>
+              </View>
+
+              {game.official_url ? (
+                <Text
+                  style={styles.arrow}
+                >
+                  ›
+                </Text>
+              ) : null}
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </View>
     </>
@@ -421,6 +602,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+    paddingTop: 60,
   },
 
   content: {
@@ -611,6 +793,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
+  actionButtonDisabled: {
+    opacity: 0.6,
+  },
+
   actionIcon: {
     fontSize: 24,
     marginRight: spacing.md,
@@ -632,9 +818,41 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   },
 
+  disabledText: {
+    color: colors.textMuted,
+  },
+
   arrow: {
     fontSize: 28,
     color: colors.textMuted,
     marginLeft: spacing.sm,
+  },
+
+  editButton: {
+    minHeight: 68,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  editIcon: {
+    fontSize: 24,
+    marginRight: spacing.md,
+  },
+
+  editButtonTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+
+  editButtonSubtitle: {
+    marginTop: 3,
+    fontSize: 12,
+    color: "#FFFFFF",
+    opacity: 0.8,
   },
 });

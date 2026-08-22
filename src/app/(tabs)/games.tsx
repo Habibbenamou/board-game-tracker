@@ -144,6 +144,8 @@ export default function GamesScreen() {
             maxPlaytime={
               item.max_playtime_minutes
             }
+
+            // Added onPress to allow GameCard to be clickable and redirect to game detail screen
             onPress={() =>
               router.push({
                 pathname: "/games/[id]",

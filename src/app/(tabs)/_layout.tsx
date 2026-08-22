@@ -14,6 +14,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
 
+        // Added padding to fix navigation buttons overlap
         tabBarStyle: {
           height: 60 + insets.bottom,
           paddingBottom: insets.bottom,
