@@ -15,6 +15,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import GameCard from "../../components/GameCard";
+
 import {
   colors,
   radius,
@@ -108,13 +109,11 @@ export default function GamesScreen() {
       <Text style={styles.title}>
         Games
       </Text>
-    
+
       <Text style={styles.subtitle}>
         {games.length} games in your collection
       </Text>
 
-      
-      
       <TextInput
         value={search}
         onChangeText={setSearch}
@@ -145,6 +144,14 @@ export default function GamesScreen() {
             maxPlaytime={
               item.max_playtime_minutes
             }
+            onPress={() =>
+              router.push({
+                pathname: "/games/[id]",
+                params: {
+                  id: item.id,
+                },
+              })
+            }
           />
         )}
         ListEmptyComponent={
@@ -163,11 +170,16 @@ export default function GamesScreen() {
           </View>
         }
       />
-      
-      <TouchableOpacity style={styles.addButton}
-        onPress={() => router.push("/add-game")}>
+
+      <TouchableOpacity
+        style={styles.addButton}
+        onPress={() =>
+          router.push("/add-game")
+        }
+        activeOpacity={0.8}
+      >
         <Text style={styles.addButtonText}>
-            + Add Game
+          + Add Game
         </Text>
       </TouchableOpacity>
     </View>
