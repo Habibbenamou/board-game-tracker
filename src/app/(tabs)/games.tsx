@@ -12,7 +12,13 @@ import {
   router,
 } from "expo-router";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
+
+import { useFocusEffect } from "expo-router";
 
 import GameCard from "../../components/GameCard";
 
@@ -30,16 +36,11 @@ import {
 export default function GamesScreen() {
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(
-    null
-  );
+  const [error, setError] =
+    useState<string | null>(null);
   const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    loadGames();
-  }, []);
-
-  async function loadGames() {
+  const loadGames = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -56,7 +57,13 @@ export default function GamesScreen() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadGames();
+    }, [loadGames])
+  );
 
   const filteredGames = useMemo(() => {
     const query = search
