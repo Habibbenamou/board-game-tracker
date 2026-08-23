@@ -6,7 +6,16 @@ import { supabase } from "./supabase";
 
 const BUCKET_NAME = "game-images";
 
-// The uploadGameImage arguments should match the call to uploadGameImage in src/app/add-game.tsx
+/**
+ * Upload a game image to Supabase Storage.
+ *
+ * Every upload gets a unique filename.
+ *
+ * This is important when editing an existing game:
+ * we don't overwrite the previous Storage object.
+ * Instead, we upload a new object, update the database
+ * with its URL, and then delete the old object.
+ */
 export async function uploadGameImage(
   gameId: string,
   imageUri: string
@@ -19,8 +28,22 @@ export async function uploadGameImage(
         ?.split("?")[0]
         ?.toLowerCase() || "jpg";
 
+    /*
+     * Generate a unique filename.
+     *
+     * Example:
+     * 123-game-id/8f3a2c1d.jpg
+     *
+     * Using a folder per game keeps Storage organized
+     * while ensuring every replacement gets a new path.
+     */
+    const uniqueId =
+      `${Date.now()}-${Math.random()
+        .toString(36)
+        .substring(2, 10)}`;
+
     const filePath =
-      `${gameId}.${extension}`;
+      `${gameId}/${uniqueId}.${extension}`;
 
     let arrayBuffer: ArrayBuffer;
 
@@ -37,9 +60,11 @@ export async function uploadGameImage(
       arrayBuffer =
         await response.arrayBuffer();
     } else {
-        // Read the image file as a base64 string and convert it to an ArrayBuffer
-        // This is necessary because Expo's FileSystem API does not provide a direct way to get an ArrayBuffer
-        // Android and IOS handle file URIs differently, so we need to use the FileSystem API to read the file content
+      /*
+       * Expo FileSystem does not directly provide
+       * an ArrayBuffer in the API we're using here,
+       * so read the local file as base64 and decode it.
+       */
       const base64 =
         await FileSystem.readAsStringAsync(
           imageUri,
@@ -61,7 +86,7 @@ export async function uploadGameImage(
           {
             contentType:
               getContentType(extension),
-            upsert: true,
+            upsert: false,
           }
         );
 
@@ -110,12 +135,32 @@ function getContentType(
   }
 }
 
+/**
+ * Delete a game image from Supabase Storage.
+ *
+ * Accepts the public URL stored in games.image_url
+ * and converts it into the Storage path expected by
+ * Supabase's remove() method.
+ */
 export async function deleteGameImage(
   imageUrl: string
 ): Promise<void> {
   try {
+    if (!imageUrl) {
+      return;
+    }
 
-    const filePath = imageUrl;
+    const filePath =
+      getStorageFilePath(imageUrl);
+
+    if (!filePath) {
+      console.warn(
+        "Unable to determine Storage path from image URL:",
+        imageUrl
+      );
+
+      return;
+    }
 
     const { error } =
       await supabase.storage
@@ -137,5 +182,55 @@ export async function deleteGameImage(
     );
 
     throw error;
+  }
+}
+
+/**
+ * Convert a Supabase public Storage URL into
+ * the path inside the bucket.
+ *
+ * Example:
+ *
+ * https://xxxxx.supabase.co/storage/v1/object/public/game-images/123/abc.jpg
+ *
+ * becomes:
+ *
+ * 123/abc.jpg
+ */
+function getStorageFilePath(
+  imageUrl: string
+): string | null {
+  try {
+    /*
+     * If the value is already a Storage path,
+     * don't modify it.
+     */
+    if (
+      !imageUrl.startsWith("http://") &&
+      !imageUrl.startsWith("https://")
+    ) {
+      return imageUrl;
+    }
+
+    const marker =
+      `/storage/v1/object/public/${BUCKET_NAME}/`;
+
+    const markerIndex =
+      imageUrl.indexOf(marker);
+
+    if (markerIndex === -1) {
+      return null;
+    }
+
+    return imageUrl.substring(
+      markerIndex + marker.length
+    );
+  } catch (error) {
+    console.error(
+      "Error parsing game image URL:",
+      error
+    );
+
+    return null;
   }
 }
