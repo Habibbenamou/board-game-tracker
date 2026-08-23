@@ -13,6 +13,7 @@ import {
 import {
   router,
   Stack,
+  useFocusEffect,
   useLocalSearchParams,
 } from "expo-router";
 
@@ -71,8 +72,7 @@ export default function GameDetailsScreen() {
         setLoading(true);
         setError(false);
 
-        const data =
-          await getGameById(id);
+        const data = await getGameById(id);
 
         setGame(data);
       } catch (error) {
@@ -93,26 +93,11 @@ export default function GameDetailsScreen() {
     loadGame();
   }, [loadGame]);
 
-  /**
-   * Reload the game whenever this screen
-   * becomes active again.
-   *
-   * This is useful after editing a game.
-   */
-  useEffect(() => {
-    const unsubscribe =
-      router.addListener?.(
-        "focus",
-        () => {
-          loadGame();
-        }
-      );
-
-    return () => {
-      unsubscribe?.();
-    };
-  }, [loadGame]);
-
+  useFocusEffect(
+    useCallback(() => {
+      loadGame();
+    }, [loadGame])
+  ); 
   async function openUrl(
     url: string | null,
     label: string

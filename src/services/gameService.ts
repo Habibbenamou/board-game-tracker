@@ -28,7 +28,7 @@ export async function getGameById(
     .from("games")
     .select("*")
     .eq("id", id)
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error("Error fetching game:", error);

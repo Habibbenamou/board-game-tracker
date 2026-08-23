@@ -1,4 +1,5 @@
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -8,6 +9,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
+import * as ImagePicker from "expo-image-picker";
 
 import { useRef, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -36,7 +39,10 @@ type GameFormProps = {
   submitLabel?: string;
   savingLabel?: string;
   saving?: boolean;
-  onSubmit: (data: GameFormData) => void | Promise<void>;
+
+  onSubmit: (
+    data: GameFormData
+  ) => void | Promise<void>;
 };
 
 export default function GameForm({
@@ -104,12 +110,74 @@ export default function GameForm({
       initialValues?.official_url ?? ""
     );
 
+  /*
+   * Stores a newly selected local image URI.
+   *
+   * If the user is editing a game and does
+   * not select a new image, this remains null
+   * and the existing image URL is preserved.
+   */
+  const [selectedImageUri, setSelectedImageUri] =
+    useState<string | null>(null);
+
   const insets = useSafeAreaInsets();
 
   const scrollViewRef =
     useRef<ScrollView>(null);
 
+  async function pickImage() {
+    try {
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        return;
+      }
+
+      const result =
+        await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ["images"],
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.8,
+        });
+
+      if (
+        !result.canceled &&
+        result.assets.length > 0
+      ) {
+        const uri = result.assets[0].uri;
+
+        console.log(
+          "GameForm - selected image:",
+          uri
+        );
+
+        setSelectedImageUri(uri);
+      }
+    } catch (error) {
+      console.error(
+        "Error selecting game image:",
+        error
+      );
+    }
+  }
+
   async function handleSubmit() {
+    /*
+     * IMPORTANT:
+     *
+     * If a new image was selected, use that
+     * local URI.
+     *
+     * Otherwise keep the existing Supabase
+     * image URL.
+     */
+    const imageUrl =
+      selectedImageUri ??
+      initialValues?.image_url ??
+      null;
+
     const data: GameFormData = {
       name: name.trim(),
 
@@ -145,9 +213,13 @@ export default function GameForm({
       official_url:
         officialUrl.trim() || null,
 
-      image_url:
-        initialValues?.image_url ?? null,
+      image_url: imageUrl,
     };
+
+    console.log(
+      "GameForm - submitting image:",
+      imageUrl
+    );
 
     await onSubmit(data);
   }
@@ -156,7 +228,7 @@ export default function GameForm({
    * Scroll the focused input into view.
    *
    * This preserves the keyboard fix from
-   * the current Add Game implementation.
+   * the previous Add Game implementation.
    */
   function handleInputFocus(
     input: TextInput
@@ -184,6 +256,11 @@ export default function GameForm({
       );
     }, 100);
   }
+
+  const displayedImage =
+    selectedImageUri ??
+    initialValues?.image_url ??
+    null;
 
   return (
     <KeyboardAvoidingView
@@ -227,6 +304,57 @@ export default function GameForm({
             : "Add a board game to your collection."}
         </Text>
 
+        {/* Game Image */}
+        <TouchableOpacity
+          style={styles.imagePicker}
+          onPress={pickImage}
+          activeOpacity={0.8}
+          disabled={saving}
+        >
+          {displayedImage ? (
+            <Image
+              source={{
+                uri: displayedImage,
+              }}
+              style={styles.imagePreview}
+              resizeMode="cover"
+            />
+          ) : (
+            <>
+              <Text style={styles.imageIcon}>
+                🖼️
+              </Text>
+
+              <Text
+                style={styles.imagePickerTitle}
+              >
+                Add Game Image
+              </Text>
+
+              <Text
+                style={styles.imagePickerSubtitle}
+              >
+                Choose an image from your gallery
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+
+        {displayedImage ? (
+          <TouchableOpacity
+            style={styles.changeImageButton}
+            onPress={pickImage}
+            disabled={saving}
+            activeOpacity={0.8}
+          >
+            <Text
+              style={styles.changeImageText}
+            >
+              Change Image
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+
         <View style={styles.form}>
           <Text style={styles.label}>
             Game name *
@@ -243,7 +371,7 @@ export default function GameForm({
             returnKeyType="next"
             onFocus={(event) =>
               handleInputFocus(
-                event.currentTarget
+                event.currentTarget as unknown as TextInput
               )
             }
           />
@@ -263,7 +391,7 @@ export default function GameForm({
             returnKeyType="next"
             onFocus={(event) =>
               handleInputFocus(
-                event.currentTarget
+                event.currentTarget as unknown as TextInput
               )
             }
           />
@@ -287,7 +415,7 @@ export default function GameForm({
             textAlignVertical="top"
             onFocus={(event) =>
               handleInputFocus(
-                event.currentTarget
+                event.currentTarget as unknown as TextInput
               )
             }
           />
@@ -314,7 +442,7 @@ export default function GameForm({
                 returnKeyType="next"
                 onFocus={(event) =>
                   handleInputFocus(
-                    event.currentTarget
+                    event.currentTarget as unknown as TextInput
                   )
                 }
               />
@@ -337,7 +465,7 @@ export default function GameForm({
                 returnKeyType="next"
                 onFocus={(event) =>
                   handleInputFocus(
-                    event.currentTarget
+                    event.currentTarget as unknown as TextInput
                   )
                 }
               />
@@ -368,7 +496,7 @@ export default function GameForm({
                 returnKeyType="next"
                 onFocus={(event) =>
                   handleInputFocus(
-                    event.currentTarget
+                    event.currentTarget as unknown as TextInput
                   )
                 }
               />
@@ -393,7 +521,7 @@ export default function GameForm({
                 returnKeyType="next"
                 onFocus={(event) =>
                   handleInputFocus(
-                    event.currentTarget
+                    event.currentTarget as unknown as TextInput
                   )
                 }
               />
@@ -418,7 +546,7 @@ export default function GameForm({
             style={styles.input}
             onFocus={(event) =>
               handleInputFocus(
-                event.currentTarget
+                event.currentTarget as unknown as TextInput
               )
             }
           />
@@ -441,7 +569,7 @@ export default function GameForm({
             style={styles.input}
             onFocus={(event) =>
               handleInputFocus(
-                event.currentTarget
+                event.currentTarget as unknown as TextInput
               )
             }
           />
@@ -489,6 +617,57 @@ const styles = StyleSheet.create({
   subtitle: {
     marginTop: 6,
     color: colors.textSecondary,
+  },
+
+  imagePicker: {
+    marginTop: spacing.xl,
+    width: "100%",
+    height: 220,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+
+  imagePreview: {
+    width: "100%",
+    height: "100%",
+  },
+
+  imageIcon: {
+    fontSize: 42,
+  },
+
+  imagePickerTitle: {
+    marginTop: spacing.sm,
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.text,
+  },
+
+  imagePickerSubtitle: {
+    marginTop: 4,
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+
+  changeImageButton: {
+    alignSelf: "center",
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+  },
+
+  changeImageText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.primary,
   },
 
   form: {
