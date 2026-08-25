@@ -1,26 +1,32 @@
 import {
-    ActivityIndicator,
-    FlatList,
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
-import { router, useFocusEffect } from "expo-router";
-
-import { useCallback, useState } from "react";
+import {
+  router,
+  useFocusEffect,
+} from "expo-router";
 
 import {
-    getPlayers,
-    type Player,
+  useCallback,
+  useState,
+} from "react";
+
+import {
+  getPlayers,
+  type Player,
 } from "../services/playerService";
 
 import {
-    colors,
-    radius,
-    spacing,
+  colors,
+  radius,
+  spacing,
 } from "../constants/theme";
 
 export default function PlayersScreen() {
@@ -34,11 +40,16 @@ export default function PlayersScreen() {
     useState(false);
 
   /*
-   * Reload players every time this screen
-   * becomes active.
+   * Reload the players every time the
+   * screen becomes active.
    *
-   * This means adding, editing, or deleting
-   * a player will immediately appear here.
+   * This makes changes from:
+   * - Add Player
+   * - Edit Player
+   * - Delete Player
+   *
+   * appear automatically when we return
+   * to this screen.
    */
   useFocusEffect(
     useCallback(() => {
@@ -51,7 +62,8 @@ export default function PlayersScreen() {
       setLoading(true);
       setError(false);
 
-      const data = await getPlayers();
+      const data =
+        await getPlayers();
 
       setPlayers(data);
     } catch (error) {
@@ -66,42 +78,54 @@ export default function PlayersScreen() {
     }
   }
 
-//   function handlePlayerPress(
-//     player: Player
-//   ) {
-//     router.push({
-//       pathname: "/edit-player",
-//       params: {
-//         id: player.id,
-//       },
-//     });
-//   }
+  /*
+   * Open the edit-player screen.
+   *
+   * We pass the player ID so edit-player.tsx
+   * can load the correct player.
+   */
+  function handlePlayerPress(
+    player: Player
+  ) {
+    router.push({
+      pathname: "/edit-player",
+      params: {
+        id: player.id,
+      },
+    });
+  }
 
   function renderPlayer({
     item,
   }: {
     item: Player;
   }) {
+    const firstLetter =
+      item.name
+        .trim()
+        .charAt(0)
+        .toUpperCase();
+
     return (
       <TouchableOpacity
         style={styles.card}
-        // onPress={() =>
-        //   handlePlayerPress(item)
-        // }
+        onPress={() =>
+          handlePlayerPress(item)
+        }
         activeOpacity={0.8}
       >
         {item.avatar_url ? (
           <Image
-            source={{ uri: item.avatar_url }}
+            source={{
+              uri: item.avatar_url,
+            }}
             style={styles.avatar}
+            resizeMode="cover"
           />
         ) : (
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
-              {item.name
-                .trim()
-                .charAt(0)
-                .toUpperCase()}
+              {firstLetter}
             </Text>
           </View>
         )}
@@ -114,7 +138,9 @@ export default function PlayersScreen() {
             {item.name}
           </Text>
 
-          <Text style={styles.playerSubtitle}>
+          <Text
+            style={styles.playerSubtitle}
+          >
             Player
           </Text>
         </View>
@@ -164,6 +190,7 @@ export default function PlayersScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>
@@ -189,6 +216,7 @@ export default function PlayersScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Player list */}
       {players.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyIcon}>
@@ -211,7 +239,11 @@ export default function PlayersScreen() {
             }
             activeOpacity={0.8}
           >
-            <Text style={styles.emptyButtonText}>
+            <Text
+              style={
+                styles.emptyButtonText
+              }
+            >
               Add Player
             </Text>
           </TouchableOpacity>
@@ -219,12 +251,16 @@ export default function PlayersScreen() {
       ) : (
         <FlatList
           data={players}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) =>
+            item.id
+          }
           renderItem={renderPlayer}
           contentContainerStyle={
             styles.listContent
           }
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator={
+            false
+          }
         />
       )}
     </View>
@@ -234,13 +270,16 @@ export default function PlayersScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
-    paddingHorizontal: spacing.lg,
+    backgroundColor:
+      colors.background,
+    paddingHorizontal:
+      spacing.lg,
   },
 
   center: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor:
+      colors.background,
     alignItems: "center",
     justifyContent: "center",
     padding: spacing.xl,
@@ -248,10 +287,12 @@ const styles = StyleSheet.create({
 
   header: {
     paddingTop: 60,
-    paddingBottom: spacing.lg,
+    paddingBottom:
+      spacing.lg,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent:
+      "space-between",
   },
 
   title: {
@@ -269,7 +310,8 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: radius.md,
-    backgroundColor: colors.primary,
+    backgroundColor:
+      colors.primary,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -282,7 +324,8 @@ const styles = StyleSheet.create({
   },
 
   listContent: {
-    paddingBottom: spacing.xl,
+    paddingBottom:
+      spacing.xl,
     gap: spacing.md,
   },
 
@@ -291,18 +334,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: spacing.md,
     borderRadius: radius.lg,
-    backgroundColor: colors.surface,
+    backgroundColor:
+      colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor:
+      colors.border,
   },
 
   avatar: {
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: colors.primary,
+    backgroundColor:
+      colors.primary,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
   },
 
   avatarText: {
@@ -348,10 +395,13 @@ const styles = StyleSheet.create({
 
   retryButton: {
     marginTop: spacing.lg,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
+    paddingHorizontal:
+      spacing.xl,
+    paddingVertical:
+      spacing.md,
     borderRadius: radius.md,
-    backgroundColor: colors.primary,
+    backgroundColor:
+      colors.primary,
   },
 
   retryText: {
@@ -363,7 +413,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingBottom: spacing.xl,
+    paddingBottom:
+      spacing.xl,
   },
 
   emptyIcon: {
@@ -387,10 +438,13 @@ const styles = StyleSheet.create({
 
   emptyButton: {
     marginTop: spacing.lg,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
+    paddingHorizontal:
+      spacing.xl,
+    paddingVertical:
+      spacing.md,
     borderRadius: radius.md,
-    backgroundColor: colors.primary,
+    backgroundColor:
+      colors.primary,
   },
 
   emptyButtonText: {
