@@ -14,10 +14,6 @@ import {
 } from "../../constants/theme";
 
 export default function MoreScreen() {
-  function openPlayers() {
-    router.push("/players");
-  }
-
   return (
     <View style={styles.container}>
       <Text style={styles.title}>
@@ -31,20 +27,56 @@ export default function MoreScreen() {
       <View style={styles.menu}>
         <TouchableOpacity
           style={styles.menuItem}
-          onPress={openPlayers}
+          onPress={() =>
+            router.push("/players")
+          }
           activeOpacity={0.8}
         >
-          <View>
+          <View style={styles.icon}>
+            <Text style={styles.iconText}>
+              👥
+            </Text>
+          </View>
+
+          <View style={styles.menuInfo}>
             <Text style={styles.menuTitle}>
               Players
             </Text>
 
             <Text style={styles.menuSubtitle}>
-              Manage your players and profiles.
+              Manage your players
             </Text>
           </View>
 
-          <Text style={styles.arrow}>
+          <Text style={styles.chevron}>
+            ›
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() =>
+            router.push("/game-sessions")
+          }
+          activeOpacity={0.8}
+        >
+          <View style={styles.icon}>
+            <Text style={styles.iconText}>
+              🎲
+            </Text>
+          </View>
+
+          <View style={styles.menuInfo}>
+            <Text style={styles.menuTitle}>
+              Game History
+            </Text>
+
+            <Text style={styles.menuSubtitle}>
+              View your recorded sessions
+            </Text>
+          </View>
+
+          <Text style={styles.chevron}>
             ›
           </Text>
         </TouchableOpacity>
@@ -77,20 +109,36 @@ const styles = StyleSheet.create({
   },
 
   menuItem: {
-    minHeight: 76,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: radius.md,
+    flexDirection: "row",
+    alignItems: "center",
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderRadius: radius.lg,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    flexDirection: "row",
+  },
+
+  icon: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.md,
+    backgroundColor: colors.background,
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
+  },
+
+  iconText: {
+    fontSize: 25,
+  },
+
+  menuInfo: {
+    flex: 1,
+    marginLeft: spacing.md,
   },
 
   menuTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "700",
     color: colors.text,
   },
@@ -101,9 +149,9 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
 
-  arrow: {
-    fontSize: 30,
+  chevron: {
+    marginLeft: spacing.sm,
+    fontSize: 28,
     color: colors.textMuted,
-    marginLeft: spacing.md,
   },
 });
