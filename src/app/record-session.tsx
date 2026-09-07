@@ -1,43 +1,43 @@
 import {
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 import {
-    router,
-    useLocalSearchParams,
+  router,
+  useLocalSearchParams,
 } from "expo-router";
 
 import { useEffect, useState } from "react";
 
 import {
-    getGameById,
-    type Game,
+  getGameById,
+  type Game,
 } from "../services/gameService";
 
 import {
-    getPlayers,
-    type Player,
+  getPlayers,
+  type Player,
 } from "../services/playerService";
 
 import {
-    createGameSession,
+  createGameSession,
 } from "../services/gameSessionService";
 
 import {
-    createSessionPlayer,
+  createSessionPlayer,
 } from "../services/sessionPlayerService";
 
 import {
-    colors,
-    radius,
-    spacing,
+  colors,
+  radius,
+  spacing,
 } from "../constants/theme";
 
 type PlayerResult = {
@@ -222,110 +222,104 @@ export default function RecordSessionScreen() {
     return dateTime.toISOString();
   }
 
-  function validateResults(): boolean {
-    /*
-     * Every player should have a placement.
-     */
-    const missingPlacement =
-      results.some(
-        (result) =>
-          !result.placement.trim()
-      );
+function validateResults(): boolean {
+  /*
+   * Placements are optional.
+   *
+   * If a placement is provided,
+   * it must be a whole number starting from 1.
+   */
+  const placements = results
+    .filter(
+      (result) =>
+        result.placement.trim() !== ""
+    )
+    .map((result) =>
+      Number(result.placement)
+    );
 
-    if (missingPlacement) {
-      Alert.alert(
-        "Missing placement",
-        "Please enter a placement for every player."
-      );
+  /*
+   * Validate provided placements.
+   */
+  if (
+    placements.some(
+      (placement) =>
+        !Number.isInteger(placement) ||
+        placement < 1
+    )
+  ) {
+    Alert.alert(
+      "Invalid placement",
+      "Placements must be whole numbers starting from 1."
+    );
 
-      return false;
-    }
-
-    /*
-     * Validate placements.
-     */
-    const placements =
-      results.map((result) =>
-        Number(result.placement)
-      );
-
-    if (
-      placements.some(
-        (placement) =>
-          !Number.isInteger(placement) ||
-          placement < 1
-      )
-    ) {
-      Alert.alert(
-        "Invalid placement",
-        "Placements must be whole numbers starting from 1."
-      );
-
-      return false;
-    }
-
-    /*
-     * Make sure placements are unique.
-     */
-    const uniquePlacements =
-      new Set(placements);
-
-    if (
-      uniquePlacements.size !==
-      placements.length
-    ) {
-      Alert.alert(
-        "Duplicate placement",
-        "Each player must have a different placement."
-      );
-
-      return false;
-    }
-
-    /*
-     * Scores are optional.
-     *
-     * If provided, they must be valid numbers.
-     */
-    const invalidScore =
-      results.some((result) => {
-        if (!result.score.trim()) {
-          return false;
-        }
-
-        return Number.isNaN(
-          Number(result.score)
-        );
-      });
-
-    if (invalidScore) {
-      Alert.alert(
-        "Invalid score",
-        "Scores must be valid numbers."
-      );
-
-      return false;
-    }
-
-    /*
-     * Require exactly one winner.
-     */
-    const winnerCount =
-      results.filter(
-        (result) => result.isWinner
-      ).length;
-
-    if (winnerCount !== 1) {
-      Alert.alert(
-        "Select a winner",
-        "Please select exactly one winner."
-      );
-
-      return false;
-    }
-
-    return true;
+    return false;
   }
+
+  /*
+   * Make sure provided placements are unique.
+   *
+   * Empty placements are ignored.
+   */
+  const uniquePlacements =
+    new Set(placements);
+
+  if (
+    uniquePlacements.size !==
+    placements.length
+  ) {
+    Alert.alert(
+      "Duplicate placement",
+      "Each player must have a different placement."
+    );
+
+    return false;
+  }
+
+  /*
+   * Scores are optional.
+   *
+   * If provided, they must be valid numbers.
+   */
+  const invalidScore =
+    results.some((result) => {
+      if (!result.score.trim()) {
+        return false;
+      }
+
+      return Number.isNaN(
+        Number(result.score)
+      );
+    });
+
+  if (invalidScore) {
+    Alert.alert(
+      "Invalid score",
+      "Scores must be valid numbers."
+    );
+
+    return false;
+  }
+
+  /*
+   * Require exactly one winner.
+   */
+  const winnerCount =
+    results.filter(
+      (result) => result.isWinner
+    ).length;
+
+  if (winnerCount !== 1) {
+    Alert.alert(
+      "Select a winner",
+      "Please select exactly one winner."
+    );
+
+    return false;
+  }
+
+  return true;
+}
 
   async function handleSaveSession() {
     if (!gameId) {
@@ -375,7 +369,9 @@ export default function RecordSessionScreen() {
                 ? Number(result.score)
                 : null,
             placement:
-              Number(result.placement),
+              result.placement.trim() !== ""
+                ? Number(result.placement)
+                : null,
             is_winner:
               result.isWinner,
           })
