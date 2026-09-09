@@ -1,17 +1,66 @@
 import { Redirect, Stack } from "expo-router";
+import { useEffect, useState } from "react";
 
 import {
   AuthProvider,
   useAuth,
-} from "../context/AuthProvider";
+} from "../context/AuthContext";
+
+import { getMyGroups } from "../services/groupService";
 
 function AppNavigator() {
   const {
     session,
-    loading,
+    loading: authLoading,
   } = useAuth();
 
-  if (loading) {
+  const [checkingGroup, setCheckingGroup] =
+    useState(true);
+
+  const [hasGroup, setHasGroup] =
+    useState(false);
+
+  useEffect(() => {
+    if (!session) {
+      setHasGroup(false);
+      setCheckingGroup(false);
+      return;
+    }
+
+    checkGroupMembership();
+  }, [session]);
+
+  async function checkGroupMembership() {
+    try {
+      setCheckingGroup(true);
+
+      const groups =
+        await getMyGroups();
+
+      setHasGroup(
+        groups.length > 0
+      );
+    } catch (error) {
+      console.error(
+        "Error checking group membership:",
+        error
+      );
+
+      /*
+       * If we cannot determine the user's
+       * groups, don't automatically send
+       * them into the main application.
+       */
+      setHasGroup(false);
+    } finally {
+      setCheckingGroup(false);
+    }
+  }
+
+  if (
+    authLoading ||
+    checkingGroup
+  ) {
     return null;
   }
 
@@ -34,6 +83,13 @@ function AppNavigator() {
 
         <Stack.Screen
           name="(tabs)"
+          options={{
+            headerShown: false,
+          }}
+        />
+
+        <Stack.Screen
+          name="group-setup"
           options={{
             headerShown: false,
           }}
@@ -70,6 +126,8 @@ function AppNavigator() {
 
       {!session ? (
         <Redirect href="/login" />
+      ) : !hasGroup ? (
+        <Redirect href="/group-setup" />
       ) : (
         <Redirect href="/(tabs)" />
       )}

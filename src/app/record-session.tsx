@@ -11,10 +11,11 @@ import {
 
 import {
   router,
+  useFocusEffect,
   useLocalSearchParams,
 } from "expo-router";
 
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import {
   getGameById,
@@ -83,9 +84,11 @@ export default function RecordSessionScreen() {
   const [notes, setNotes] =
     useState("");
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [])
+  );
 
   async function loadData() {
     try {
