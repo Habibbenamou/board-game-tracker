@@ -1,5 +1,5 @@
 import {
-    Alert,
+  Alert,
 } from "react-native";
 
 import { router } from "expo-router";
@@ -7,16 +7,20 @@ import { router } from "expo-router";
 import { useState } from "react";
 
 import PlayerForm, {
-    type PlayerFormData,
+  type PlayerFormData,
 } from "../components/PlayerForm";
 
 import {
-    createPlayer,
-    updatePlayer,
+  createGuestPlayer,
+  updatePlayer,
 } from "../services/playerService";
 
 import {
-    uploadPlayerImage,
+  getMyGroups,
+} from "../services/groupService";
+
+import {
+  uploadPlayerImage,
 } from "../services/playerImageService";
 
 export default function AddPlayerScreen() {
@@ -39,20 +43,64 @@ export default function AddPlayerScreen() {
     try {
       setSaving(true);
 
-      const player = await createPlayer({
-        ...data,
-        avatar_url: null,
-      });
+      /*
+       * Get the current user's groups.
+       *
+       * MVP:
+       * Use the first group because the
+       * Players screen currently uses the
+       * first group as the active group.
+       */
+      const groups =
+        await getMyGroups();
 
-      if (selectedAvatarUri) {
-        const avatarUrl = await uploadPlayerImage(
-          player.id,
-          selectedAvatarUri
+      if (
+        !groups ||
+        groups.length === 0
+      ) {
+        Alert.alert(
+          "No group",
+          "Please join or create a group before adding a player."
         );
 
-        await updatePlayer(player.id, {
-          avatar_url: avatarUrl,
-        });
+        return;
+      }
+
+      const currentGroup =
+        groups[0];
+
+      /*
+       * Create the guest player and add
+       * them to the current group.
+       *
+       * Guest players have no auth user,
+       * so user_id remains null.
+       */
+      const player =
+        await createGuestPlayer(
+          currentGroup.id,
+          data.name,
+          null
+        );
+
+      /*
+       * Upload the avatar after the player
+       * has been created because the player
+       * ID is used as part of the storage path.
+       */
+      if (selectedAvatarUri) {
+        const avatarUrl =
+          await uploadPlayerImage(
+            player.id,
+            selectedAvatarUri
+          );
+
+        await updatePlayer(
+          player.id,
+          {
+            avatar_url: avatarUrl,
+          }
+        );
       }
 
       Alert.alert(
@@ -69,7 +117,7 @@ export default function AddPlayerScreen() {
       );
     } catch (error) {
       console.error(
-        "Error adding player:",
+        "Error adding guest player:",
         error
       );
 

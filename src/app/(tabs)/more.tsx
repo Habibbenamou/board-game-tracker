@@ -64,6 +64,33 @@ export default function MoreScreen() {
       </Text>
 
       <View style={styles.menu}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() =>
+            router.push("/profile")
+          }
+          activeOpacity={0.8}
+        >
+          <View style={styles.icon}>
+            <Text style={styles.iconText}>
+              👤
+            </Text>
+          </View>
+
+          <View style={styles.menuInfo}>
+            <Text style={styles.menuTitle}>
+              Profile
+            </Text>
+
+            <Text style={styles.menuSubtitle}>
+              View and edit your profile
+            </Text>
+          </View>
+
+          <Text style={styles.chevron}>
+            ›
+          </Text>
+        </TouchableOpacity>
         {/* Players */}
         <TouchableOpacity
           style={styles.menuItem}

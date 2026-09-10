@@ -1,13 +1,13 @@
 import {
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 import * as ImagePicker from "expo-image-picker";
@@ -16,9 +16,9 @@ import { useRef, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
-    colors,
-    radius,
-    spacing,
+  colors,
+  radius,
+  spacing,
 } from "../constants/theme";
 
 export type PlayerFormData = {
@@ -170,7 +170,7 @@ export default function PlayerForm({
         <Text style={styles.subtitle}>
           {initialValues
             ? "Update this player's information."
-            : "Add a player to your collection."}
+            : "Add a guest player to group."}
         </Text>
 
         {/* Avatar */}
