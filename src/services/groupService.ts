@@ -1,7 +1,8 @@
 import type {
-    Tables,
-    TablesInsert,
+  Tables,
+  TablesInsert,
 } from "../types/database";
+import { getMyPlayer } from "./playerService";
 
 import { supabase } from "./supabase";
 
@@ -82,6 +83,14 @@ export async function createGroup(
   const user =
     await getCurrentUser();
 
+  const player = await getMyPlayer();
+
+  if (!player) {
+    throw new Error(
+      "No player profile found for the current user."
+    );
+  }
+  
   const trimmedName =
     name.trim();
 
@@ -91,48 +100,45 @@ export async function createGroup(
     );
   }
 
-  /*
-   * Try a few times in the extremely
-   * unlikely event that a generated
-   * join code already exists.
-   */
-  for (let attempt = 0; attempt < 5; attempt++) {
+  for (
+    let attempt = 0;
+    attempt < 5;
+    attempt++
+  ) {
     const joinCode =
       generateJoinCode();
 
-    const { data: group, error } =
-      await supabase
-        .from("groups")
-        .insert({
-          name: trimmedName,
-          join_code: joinCode,
-          created_by: user.id,
-        })
-        .select()
-        .single();
+    const {
+      data: group,
+      error,
+    } = await supabase
+      .from("groups")
+      .insert({
+        name: trimmedName,
+        join_code: joinCode,
+        created_by: user.id,
+      })
+      .select()
+      .single();
 
     if (!error && group) {
-      /*
-       * Add the creator as the first
-       * member of the group.
-       */
-      const { error: memberError } =
-        await supabase
-          .from("group_members")
-          .insert({
-            group_id: group.id,
-            user_id: user.id,
-          });
+      const {
+        error: memberError,
+      } = await supabase
+        .from("group_members")
+        .insert({
+          group_id: group.id,
+          player_id: player.id,
+        });
 
       if (memberError) {
-        /*
-         * If membership creation fails,
-         * remove the group we just created.
-         */
         await supabase
           .from("groups")
           .delete()
-          .eq("id", group.id);
+          .eq(
+            "id",
+            group.id
+          );
 
         console.error(
           "Error creating group membership:",
@@ -145,10 +151,6 @@ export async function createGroup(
       return group;
     }
 
-    /*
-     * PostgreSQL unique violation.
-     * Try another join code.
-     */
     if (
       error?.code === "23505"
     ) {
@@ -178,9 +180,13 @@ export async function createGroup(
 export async function getMyGroups(): Promise<
   Group[]
 > {
-  const user =
-    await getCurrentUser();
+  const player = await getMyPlayer();
 
+  if (!player) {
+    throw new Error(
+      "No player profile found for the current user."
+    );
+  }
   const {
     data: memberships,
     error: membershipError,
@@ -188,8 +194,8 @@ export async function getMyGroups(): Promise<
     .from("group_members")
     .select("group_id")
     .eq(
-      "user_id",
-      user.id
+      "player_id",
+      player.id
     );
 
   if (membershipError) {
@@ -214,14 +220,16 @@ export async function getMyGroups(): Promise<
         membership.group_id
     );
 
-  const { data, error } =
-    await supabase
-      .from("groups")
-      .select("*")
-      .in(
-        "id",
-        groupIds
-      );
+  const {
+    data,
+    error,
+  } = await supabase
+    .from("groups")
+    .select("*")
+    .in(
+      "id",
+      groupIds
+    );
 
   if (error) {
     console.error(
@@ -243,17 +251,23 @@ export async function getMyGroups(): Promise<
 export async function getMyGroupMemberships(): Promise<
   GroupMember[]
 > {
-  const user =
-    await getCurrentUser();
+  const player = await getMyPlayer();
 
-  const { data, error } =
-    await supabase
-      .from("group_members")
-      .select("*")
-      .eq(
-        "user_id",
-        user.id
-      );
+  if (!player) {
+    throw new Error(
+      "No player profile found for the current user."
+    );
+  }
+  const {
+    data,
+    error,
+  } = await supabase
+    .from("group_members")
+    .select("*")
+    .eq(
+      "player_id",
+      player.id
+    );
 
   if (error) {
     console.error(
@@ -266,7 +280,6 @@ export async function getMyGroupMemberships(): Promise<
 
   return data ?? [];
 }
-
 
 /**
  * Join a group using its 6-character
@@ -330,21 +343,26 @@ export async function joinGroup(
 export async function leaveGroup(
   groupId: string
 ): Promise<void> {
-  const user =
-    await getCurrentUser();
+  const player = await getMyPlayer();
 
-  const { error } =
-    await supabase
-      .from("group_members")
-      .delete()
-      .eq(
-        "group_id",
-        groupId
-      )
-      .eq(
-        "user_id",
-        user.id
-      );
+  if (!player) {
+    throw new Error(
+      "No player profile found for the current user."
+    );
+  }
+  const {
+    error,
+  } = await supabase
+    .from("group_members")
+    .delete()
+    .eq(
+      "group_id",
+      groupId
+    )
+    .eq(
+      "player_id",
+      player.id
+    );
 
   if (error) {
     console.error(

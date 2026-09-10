@@ -1,20 +1,24 @@
 import {
-    ActivityIndicator,
-    Alert,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 import { router } from "expo-router";
 import { useState } from "react";
 
+import { createMyPlayer } from "@/services/playerService";
 import { colors, radius, spacing } from "../constants/theme";
 import { signUp } from "../services/authService";
 
 export default function SignupScreen() {
+  const [username, setUsername] =
+  useState("");
+  
   const [email, setEmail] =
     useState("");
 
@@ -29,6 +33,7 @@ export default function SignupScreen() {
 
   async function handleSignup() {
     if (
+      !username.trim() ||
       !email.trim() ||
       !password ||
       !confirmPassword
@@ -40,7 +45,18 @@ export default function SignupScreen() {
 
       return;
     }
+    
+    const trimmedUsername =
+    username.trim();
 
+    if (trimmedUsername.length < 3) {
+      Alert.alert(
+        "Username too short",
+        "Your username must contain at least 3 characters."
+      );
+
+      return;
+    }
     if (password !== confirmPassword) {
       Alert.alert(
         "Passwords don't match",
@@ -64,7 +80,8 @@ export default function SignupScreen() {
 
       const data = await signUp(
         email,
-        password
+        password,
+        trimmedUsername
       );
 
       /*
@@ -74,8 +91,14 @@ export default function SignupScreen() {
        * an active session immediately.
        */
       if (data.session) {
-        router.replace("/(tabs)");
-      } else {
+        await createMyPlayer(
+          username
+        );
+
+        router.replace(
+          "/group-setup"
+        );
+      }else {
         Alert.alert(
           "Account created",
           "Your account has been created. Please check your email to confirm your account before logging in.",
@@ -119,6 +142,21 @@ export default function SignupScreen() {
         </Text>
 
         <View style={styles.form}>
+          <Text style={styles.label}>
+            Username
+          </Text>
+
+          <TextInput
+            value={username}
+            onChangeText={setUsername}
+            placeholder="Choose a username"
+            placeholderTextColor={
+              colors.textMuted
+            }
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={styles.input}
+          />
           <Text style={styles.label}>
             Email
           </Text>

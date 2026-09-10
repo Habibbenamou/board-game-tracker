@@ -1,25 +1,25 @@
 import {
-    ActivityIndicator,
-    Alert,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 import { router } from "expo-router";
 import { useState } from "react";
 
 import {
-    colors,
-    radius,
-    spacing,
+  colors,
+  radius,
+  spacing,
 } from "../constants/theme";
 
 import {
-    createGroup,
-    joinGroup,
+  createGroup,
+  joinGroup,
 } from "../services/groupService";
 
 export default function GroupSetupScreen() {
@@ -38,6 +38,11 @@ export default function GroupSetupScreen() {
 
   const [saving, setSaving] =
     useState(false);
+    
+// // Function to reset authentication state
+// async function resetAuth() {
+//   await supabase.auth.signOut({ scope: "local" });
+// }
 
   async function handleCreateGroup() {
     if (!groupName.trim()) {
@@ -335,6 +340,16 @@ export default function GroupSetupScreen() {
           Create or join a group to start
           tracking your board games together.
         </Text>
+
+        {/* <TouchableOpacity
+        style={styles.secondaryButton}
+        onPress={resetAuth}
+        activeOpacity={0.8}
+        >
+        <Text style={styles.secondaryButtonText}>
+            Reset Login
+        </Text>
+        </TouchableOpacity> */}
 
         <TouchableOpacity
           style={styles.primaryButton}

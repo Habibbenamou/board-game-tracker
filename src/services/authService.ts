@@ -5,13 +5,28 @@ import { supabase } from "./supabase";
  */
 export async function signUp(
   email: string,
-  password: string
+  password: string,
+  username: string
 ) {
-  const { data, error } =
-    await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-    });
+
+  if (!username) {
+    throw new Error(
+      "Username is required."
+    );
+  }
+
+  const {
+    data,
+    error,
+  } = await supabase.auth.signUp({
+    email: email.trim(),
+    password,
+    options: {
+      data: {
+        username,
+      },
+    },
+  });
 
   if (error) {
     console.error(
