@@ -1,6 +1,8 @@
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,7 +17,11 @@ import {
   useLocalSearchParams,
 } from "expo-router";
 
-import { useCallback, useState } from "react";
+import {
+  useCallback,
+  useRef,
+  useState,
+} from "react";
 
 import {
   getGameById,
@@ -41,6 +47,7 @@ import {
   spacing,
 } from "../constants/theme";
 
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useGroup } from "../context/GroupContext";
 
 type PlayerResult = {
@@ -89,6 +96,12 @@ export default function RecordSessionScreen() {
 
   const [notes, setNotes] =
     useState("");
+
+  const insets =
+    useSafeAreaInsets();
+
+  const scrollViewRef =
+    useRef<ScrollView>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -468,6 +481,22 @@ export default function RecordSessionScreen() {
     }
   }
 
+  /*
+   * Scroll to the bottom after the keyboard
+   * has had time to open.
+   *
+   * Notes is near the bottom of the screen,
+   * so this is more reliable than manually
+   * calculating the TextInput's screen position.
+   */
+  function handleNotesFocus() {
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({
+        animated: true,
+      });
+    }, 100);
+  }
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -484,12 +513,38 @@ export default function RecordSessionScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={
+        Platform.OS === "ios"
+          ? "padding"
+          : "height"
+      }
+      keyboardVerticalOffset={
+        Platform.OS === "ios"
+          ? insets.top
+          : 0
+      }
+    >
       <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={
-          styles.content
+        ref={scrollViewRef}
+        contentContainerStyle={[
+          styles.content,
+          {
+            paddingBottom:
+              Math.max(
+                insets.bottom,
+                spacing.xl
+              ) + 100,
+          },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={
+          Platform.OS === "ios"
+            ? "interactive"
+            : "on-drag"
         }
+        showsVerticalScrollIndicator={false}
       >
         <Text style={styles.title}>
           Record Game
@@ -855,6 +910,7 @@ export default function RecordSessionScreen() {
           multiline
           textAlignVertical="top"
           editable={!saving}
+          onFocus={handleNotesFocus}
         />
 
         {/* Save */}
@@ -898,7 +954,7 @@ export default function RecordSessionScreen() {
           </Text>
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
