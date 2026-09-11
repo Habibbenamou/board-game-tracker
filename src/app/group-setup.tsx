@@ -22,7 +22,13 @@ import {
   joinGroup,
 } from "../services/groupService";
 
+import { useGroup } from "../context/GroupContext";
+
 export default function GroupSetupScreen() {
+  const {
+    refreshGroups,
+  } = useGroup();
+
   const [mode, setMode] = useState<
     "choose" | "create" | "join"
   >("choose");
@@ -38,14 +44,12 @@ export default function GroupSetupScreen() {
 
   const [saving, setSaving] =
     useState(false);
-    
-// // Function to reset authentication state
-// async function resetAuth() {
-//   await supabase.auth.signOut({ scope: "local" });
-// }
 
   async function handleCreateGroup() {
-    if (!groupName.trim()) {
+    const trimmedGroupName =
+      groupName.trim();
+
+    if (!trimmedGroupName) {
       Alert.alert(
         "Missing information",
         "Please enter a group name."
@@ -59,8 +63,19 @@ export default function GroupSetupScreen() {
 
       const group =
         await createGroup(
-          groupName
+          trimmedGroupName
         );
+
+      /*
+       * The group membership now exists
+       * in the database, so refresh the
+       * global GroupContext immediately.
+       *
+       * This is important because creating
+       * a group does not change the Supabase
+       * authentication session.
+       */
+      await refreshGroups();
 
       setCreatedCode(
         group.join_code
@@ -86,7 +101,10 @@ export default function GroupSetupScreen() {
   }
 
   async function handleJoinGroup() {
-    if (!joinCode.trim()) {
+    const trimmedCode =
+      joinCode.trim();
+
+    if (!trimmedCode) {
       Alert.alert(
         "Missing information",
         "Please enter the group code."
@@ -100,8 +118,18 @@ export default function GroupSetupScreen() {
 
       const group =
         await joinGroup(
-          joinCode
+          trimmedCode
         );
+
+      /*
+       * joinGroup() updates the database,
+       * but it does not change the auth
+       * session.
+       *
+       * Explicitly refresh the global group
+       * state before entering the main app.
+       */
+      await refreshGroups();
 
       Alert.alert(
         "Group joined!",
@@ -128,6 +156,35 @@ export default function GroupSetupScreen() {
         error instanceof Error
           ? error.message
           : "Unable to join the group. Please check the code and try again."
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleContinueAfterCreate() {
+    try {
+      setSaving(true);
+
+      /*
+       * Refresh once more before entering
+       * the app. This is cheap and makes the
+       * transition especially reliable.
+       */
+      await refreshGroups();
+
+      router.replace(
+        "/(tabs)"
+      );
+    } catch (error) {
+      console.error(
+        "Error refreshing groups:",
+        error
+      );
+
+      Alert.alert(
+        "Unable to continue",
+        "Your group was created, but we couldn't load it yet. Please try again."
       );
     } finally {
       setSaving(false);
@@ -162,19 +219,30 @@ export default function GroupSetupScreen() {
           </View>
 
           <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={() =>
-              router.replace(
-                "/(tabs)"
-              )
+            style={[
+              styles.primaryButton,
+              saving &&
+                styles.buttonDisabled,
+            ]}
+            onPress={
+              handleContinueAfterCreate
             }
+            disabled={saving}
             activeOpacity={0.8}
           >
-            <Text
-              style={styles.primaryButtonText}
-            >
-              Continue to App
-            </Text>
+            {saving ? (
+              <ActivityIndicator
+                color="#FFFFFF"
+              />
+            ) : (
+              <Text
+                style={
+                  styles.primaryButtonText
+                }
+              >
+                Continue to App
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -225,7 +293,9 @@ export default function GroupSetupScreen() {
             />
           ) : (
             <Text
-              style={styles.primaryButtonText}
+              style={
+                styles.primaryButtonText
+              }
             >
               Create Group
             </Text>
@@ -238,7 +308,11 @@ export default function GroupSetupScreen() {
           disabled={saving}
           activeOpacity={0.8}
         >
-          <Text style={styles.secondaryButtonText}>
+          <Text
+            style={
+              styles.secondaryButtonText
+            }
+          >
             Back
           </Text>
         </TouchableOpacity>
@@ -304,7 +378,9 @@ export default function GroupSetupScreen() {
             />
           ) : (
             <Text
-              style={styles.primaryButtonText}
+              style={
+                styles.primaryButtonText
+              }
             >
               Join Group
             </Text>
@@ -317,7 +393,11 @@ export default function GroupSetupScreen() {
           disabled={saving}
           activeOpacity={0.8}
         >
-          <Text style={styles.secondaryButtonText}>
+          <Text
+            style={
+              styles.secondaryButtonText
+            }
+          >
             Back
           </Text>
         </TouchableOpacity>
@@ -341,23 +421,17 @@ export default function GroupSetupScreen() {
           tracking your board games together.
         </Text>
 
-        {/* <TouchableOpacity
-        style={styles.secondaryButton}
-        onPress={resetAuth}
-        activeOpacity={0.8}
-        >
-        <Text style={styles.secondaryButtonText}>
-            Reset Login
-        </Text>
-        </TouchableOpacity> */}
-
         <TouchableOpacity
           style={styles.primaryButton}
-          onPress={() => setMode("create")}
+          onPress={() =>
+            setMode("create")
+          }
           activeOpacity={0.8}
         >
           <Text
-            style={styles.primaryButtonText}
+            style={
+              styles.primaryButtonText
+            }
           >
             Create Group
           </Text>
@@ -365,11 +439,15 @@ export default function GroupSetupScreen() {
 
         <TouchableOpacity
           style={styles.secondaryButton}
-          onPress={() => setMode("join")}
+          onPress={() =>
+            setMode("join")
+          }
           activeOpacity={0.8}
         >
           <Text
-            style={styles.secondaryButtonText}
+            style={
+              styles.secondaryButtonText
+            }
           >
             Join Group
           </Text>

@@ -1,15 +1,21 @@
 import {
-    createContext,
-    useContext,
-    useEffect,
-    useState,
-    type ReactNode,
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
 } from "react";
 
 import type {
-    Session,
-    User,
+  Session,
+  User,
 } from "@supabase/supabase-js";
+
+import {
+  signIn as authSignIn,
+  signOut as authSignOut,
+  signUp as authSignUp,
+} from "../services/authService";
 
 import { supabase } from "../services/supabase";
 
@@ -19,18 +25,20 @@ type AuthContextType = {
   loading: boolean;
 
   signIn: (
-    email: string,
+    username: string,
     password: string
   ) => Promise<{
     error: Error | null;
   }>;
 
   signUp: (
-    email: string,
-    password: string
+    username: string,
+    password: string,
+    displayName: string
   ) => Promise<{
     error: Error | null;
     user: User | null;
+    session: Session | null;
   }>;
 
   signOut: () => Promise<{
@@ -56,6 +64,10 @@ export function AuthProvider({
   const [loading, setLoading] =
     useState(true);
 
+  /*
+   * Load the existing Supabase session
+   * when the app starts.
+   */
   useEffect(() => {
     let mounted = true;
 
@@ -87,6 +99,10 @@ export function AuthProvider({
 
     loadSession();
 
+    /*
+     * Keep the React auth state synchronized
+     * with Supabase.
+     */
     const {
       data: {
         subscription,
@@ -94,7 +110,9 @@ export function AuthProvider({
     } =
       supabase.auth.onAuthStateChange(
         (_event, newSession) => {
-          setSession(newSession);
+          if (mounted) {
+            setSession(newSession);
+          }
         }
       );
 
@@ -104,23 +122,25 @@ export function AuthProvider({
     };
   }, []);
 
+  /*
+   * Sign in using username + password.
+   *
+   * The actual username -> Supabase Auth
+   * lookup/implementation stays inside
+   * authService.ts.
+   */
   async function signIn(
-    email: string,
+    username: string,
     password: string
   ) {
     try {
-      const {
-        error,
-      } =
-        await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+      await authSignIn(
+        username.trim(),
+        password
+      );
 
       return {
-        error: error
-          ? new Error(error.message)
-          : null,
+        error: null,
       };
     } catch (error) {
       console.error(
@@ -139,25 +159,33 @@ export function AuthProvider({
     }
   }
 
+  /*
+   * Sign up using:
+   *
+   * username
+   * password
+   * display name
+   *
+   * authService is responsible for
+   * creating the Supabase Auth user.
+   */
   async function signUp(
-    email: string,
-    password: string
+    username: string,
+    password: string,
+    displayName: string
   ) {
     try {
-      const {
-        data,
-        error,
-      } =
-        await supabase.auth.signUp({
-          email,
+      const data =
+        await authSignUp(
+          username.trim(),
           password,
-        });
+          displayName.trim()
+        );
 
       return {
         user: data.user,
-        error: error
-          ? new Error(error.message)
-          : null,
+        session: data.session,
+        error: null,
       };
     } catch (error) {
       console.error(
@@ -167,6 +195,7 @@ export function AuthProvider({
 
       return {
         user: null,
+        session: null,
         error:
           error instanceof Error
             ? error
@@ -177,16 +206,19 @@ export function AuthProvider({
     }
   }
 
+  /*
+   * Sign out the current user.
+   */
   async function signOut() {
     try {
-      const {
-        error,
-      } = await supabase.auth.signOut();
+      await authSignOut();
 
+      /*
+       * Supabase's auth state listener will
+       * also update the session to null.
+       */
       return {
-        error: error
-          ? new Error(error.message)
-          : null,
+        error: null,
       };
     } catch (error) {
       console.error(
@@ -215,7 +247,9 @@ export function AuthProvider({
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={value}
+    >
       {children}
     </AuthContext.Provider>
   );

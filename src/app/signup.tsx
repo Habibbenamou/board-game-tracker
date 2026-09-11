@@ -16,15 +16,11 @@ import { colors, radius, spacing } from "../constants/theme";
 import { signUp } from "../services/authService";
 
 export default function SignupScreen() {
-  const [username, setUsername] =
-  useState("");
-  
-  const [email, setEmail] =
+  const [username, setUsername] = useState("");
+  const [displayName, setDisplayName] =
     useState("");
 
-  const [password, setPassword] =
-    useState("");
-
+  const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] =
     useState("");
 
@@ -32,9 +28,15 @@ export default function SignupScreen() {
     useState(false);
 
   async function handleSignup() {
+    const trimmedUsername =
+      username.trim();
+
+    const trimmedDisplayName =
+      displayName.trim();
+
     if (
-      !username.trim() ||
-      !email.trim() ||
+      !trimmedUsername ||
+      !trimmedDisplayName ||
       !password ||
       !confirmPassword
     ) {
@@ -45,9 +47,6 @@ export default function SignupScreen() {
 
       return;
     }
-    
-    const trimmedUsername =
-    username.trim();
 
     if (trimmedUsername.length < 3) {
       Alert.alert(
@@ -57,6 +56,20 @@ export default function SignupScreen() {
 
       return;
     }
+
+    if (
+      !/^[a-zA-Z0-9_]+$/.test(
+        trimmedUsername
+      )
+    ) {
+      Alert.alert(
+        "Invalid username",
+        "Username can only contain letters, numbers, and underscores."
+      );
+
+      return;
+    }
+
     if (password !== confirmPassword) {
       Alert.alert(
         "Passwords don't match",
@@ -79,29 +92,24 @@ export default function SignupScreen() {
       setLoading(true);
 
       const data = await signUp(
-        email,
+        trimmedUsername,
         password,
-        trimmedUsername
+        trimmedDisplayName
       );
 
-      /*
-       * Depending on the Supabase project's
-       * email confirmation settings, a newly
-       * registered user may or may not have
-       * an active session immediately.
-       */
       if (data.session) {
         await createMyPlayer(
-          username
+          trimmedUsername,
+          trimmedDisplayName
         );
 
         router.replace(
           "/group-setup"
         );
-      }else {
+      } else {
         Alert.alert(
           "Account created",
-          "Your account has been created. Please check your email to confirm your account before logging in.",
+          "Your account was created successfully. You can now log in.",
           [
             {
               text: "OK",
@@ -117,10 +125,35 @@ export default function SignupScreen() {
         error
       );
 
-      Alert.alert(
-        "Sign up failed",
-        "Unable to create your account. Please check your information and try again."
-      );
+      const message =
+        error instanceof Error
+          ? error.message
+          : "";
+
+      if (
+        message
+          .toLowerCase()
+          .includes("username")
+      ) {
+        Alert.alert(
+          "Username unavailable",
+          "That username is already taken. Please choose another one."
+        );
+      } else if (
+        message
+          .toLowerCase()
+          .includes("display name")
+      ) {
+        Alert.alert(
+          "Invalid display name",
+          "Please enter a display name."
+        );
+      } else {
+        Alert.alert(
+          "Sign up failed",
+          "Unable to create your account. Please try again."
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -142,6 +175,8 @@ export default function SignupScreen() {
         </Text>
 
         <View style={styles.form}>
+          {/* Username */}
+
           <Text style={styles.label}>
             Username
           </Text>
@@ -155,24 +190,39 @@ export default function SignupScreen() {
             }
             autoCapitalize="none"
             autoCorrect={false}
+            autoComplete="username"
             style={styles.input}
           />
+
+          <Text style={styles.hint}>
+            Used to log in • 3+ characters •
+            letters, numbers, _
+          </Text>
+
+          {/* Display name */}
+
           <Text style={styles.label}>
-            Email
+            Display name
           </Text>
 
           <TextInput
-            value={email}
-            onChangeText={setEmail}
-            placeholder="you@example.com"
+            value={displayName}
+            onChangeText={setDisplayName}
+            placeholder="How should we call you?"
             placeholderTextColor={
               colors.textMuted
             }
-            keyboardType="email-address"
-            autoCapitalize="none"
+            autoCapitalize="words"
             autoCorrect={false}
+            autoComplete="name"
             style={styles.input}
           />
+
+          <Text style={styles.hint}>
+            This is the name other players will see.
+          </Text>
+
+          {/* Password */}
 
           <Text style={styles.label}>
             Password
@@ -186,8 +236,11 @@ export default function SignupScreen() {
               colors.textMuted
             }
             secureTextEntry
+            autoComplete="new-password"
             style={styles.input}
           />
+
+          {/* Confirm password */}
 
           <Text style={styles.label}>
             Confirm password
@@ -203,8 +256,11 @@ export default function SignupScreen() {
               colors.textMuted
             }
             secureTextEntry
+            autoComplete="new-password"
             style={styles.input}
           />
+
+          {/* Create account */}
 
           <TouchableOpacity
             style={[
@@ -226,6 +282,8 @@ export default function SignupScreen() {
               </Text>
             )}
           </TouchableOpacity>
+
+          {/* Login */}
 
           <TouchableOpacity
             style={styles.secondaryButton}
@@ -291,6 +349,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: colors.text,
+  },
+
+  hint: {
+    marginTop: 6,
+    fontSize: 12,
+    color: colors.textMuted,
   },
 
   input: {

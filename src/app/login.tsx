@@ -1,11 +1,11 @@
 import {
-    ActivityIndicator,
-    Alert,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 import { router } from "expo-router";
@@ -15,20 +15,17 @@ import { colors, radius, spacing } from "../constants/theme";
 import { signIn } from "../services/authService";
 
 export default function LoginScreen() {
-  const [email, setEmail] =
-    useState("");
-
-  const [password, setPassword] =
-    useState("");
-
-  const [loading, setLoading] =
-    useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   async function handleLogin() {
-    if (!email.trim() || !password) {
+    const trimmedUsername = username.trim();
+
+    if (!trimmedUsername || !password) {
       Alert.alert(
         "Missing information",
-        "Please enter your email and password."
+        "Please enter your username and password."
       );
 
       return;
@@ -38,7 +35,7 @@ export default function LoginScreen() {
       setLoading(true);
 
       await signIn(
-        email,
+        trimmedUsername,
         password
       );
 
@@ -51,7 +48,7 @@ export default function LoginScreen() {
 
       Alert.alert(
         "Login failed",
-        "Unable to log in. Please check your email and password."
+        "Incorrect username or password."
       );
     } finally {
       setLoading(false);
@@ -75,19 +72,19 @@ export default function LoginScreen() {
 
         <View style={styles.form}>
           <Text style={styles.label}>
-            Email
+            Username
           </Text>
 
           <TextInput
-            value={email}
-            onChangeText={setEmail}
-            placeholder="you@example.com"
+            value={username}
+            onChangeText={setUsername}
+            placeholder="Your username"
             placeholderTextColor={
               colors.textMuted
             }
-            keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
+            autoComplete="username"
             style={styles.input}
           />
 
@@ -103,6 +100,7 @@ export default function LoginScreen() {
               colors.textMuted
             }
             secureTextEntry
+            autoComplete="password"
             style={styles.input}
           />
 

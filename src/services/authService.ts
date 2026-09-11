@@ -1,90 +1,179 @@
 import { supabase } from "./supabase";
 
-/**
- * Sign up a new user with email and password.
- */
-export async function signUp(
-  email: string,
-  password: string,
+function normalizeUsername(
   username: string
-) {
+): string {
+  return username
+    .trim()
+    .toLowerCase();
+}
 
-  if (!username) {
+function getAuthIdentifier(
+  username: string
+): string {
+  const normalizedUsername =
+    normalizeUsername(username);
+
+  return `${normalizedUsername}@boardgametracker.local`;
+}
+
+function validateUsername(
+  username: string
+): string {
+  const normalizedUsername =
+    normalizeUsername(username);
+
+  if (!normalizedUsername) {
     throw new Error(
       "Username is required."
     );
   }
 
-  const {
-    data,
-    error,
-  } = await supabase.auth.signUp({
-    email: email.trim(),
-    password,
-    options: {
-      data: {
-        username,
-      },
-    },
-  });
+  if (normalizedUsername.length < 3) {
+    throw new Error(
+      "Username must contain at least 3 characters."
+    );
+  }
+
+  if (
+    !/^[a-zA-Z0-9_]+$/.test(
+      normalizedUsername
+    )
+  ) {
+    throw new Error(
+      "Username can only contain letters, numbers, and underscores."
+    );
+  }
+
+  return normalizedUsername;
+}
+
+async function usernameExists(
+  username: string
+): Promise<boolean> {
+  const normalizedUsername =
+    normalizeUsername(username);
+
+  const { data, error } =
+    await supabase
+      .from("players")
+      .select("id")
+      .eq(
+        "username",
+        normalizedUsername
+      )
+      .limit(1);
 
   if (error) {
-    console.error(
-      "Error signing up:",
-      error
+    throw error;
+  }
+
+  return (
+    data !== null &&
+    data.length > 0
+  );
+}
+
+export async function signUp(
+  username: string,
+  password: string,
+  displayName: string
+) {
+  const normalizedUsername =
+    validateUsername(username);
+
+  const trimmedDisplayName =
+    displayName.trim();
+
+  if (!trimmedDisplayName) {
+    throw new Error(
+      "Display name is required."
+    );
+  }
+
+  if (!password) {
+    throw new Error(
+      "Password is required."
+    );
+  }
+
+  const exists =
+    await usernameExists(
+      normalizedUsername
     );
 
+  if (exists) {
+    throw new Error(
+      "Username is already taken."
+    );
+  }
+
+  const authIdentifier =
+    getAuthIdentifier(
+      normalizedUsername
+    );
+
+  const { data, error } =
+    await supabase.auth.signUp({
+      email: authIdentifier,
+      password,
+      options: {
+        data: {
+          username:
+            normalizedUsername,
+          display_name:
+            trimmedDisplayName,
+        },
+      },
+    });
+
+  if (error) {
     throw error;
   }
 
   return data;
 }
 
-/**
- * Sign in an existing user.
- */
 export async function signIn(
-  email: string,
+  username: string,
   password: string
 ) {
+  const normalizedUsername =
+    validateUsername(username);
+
+  if (!password) {
+    throw new Error(
+      "Password is required."
+    );
+  }
+
+  const authIdentifier =
+    getAuthIdentifier(
+      normalizedUsername
+    );
+
   const { data, error } =
     await supabase.auth.signInWithPassword({
-      email: email.trim(),
+      email: authIdentifier,
       password,
     });
 
   if (error) {
-    console.error(
-      "Error signing in:",
-      error
-    );
-
     throw error;
   }
 
   return data;
 }
 
-/**
- * Sign out the current user.
- */
-export async function signOut(): Promise<void> {
+export async function signOut() {
   const { error } =
     await supabase.auth.signOut();
 
   if (error) {
-    console.error(
-      "Error signing out:",
-      error
-    );
-
     throw error;
   }
 }
 
-/**
- * Get the currently authenticated user.
- */
 export async function getCurrentUser() {
   const {
     data: { user },
@@ -92,20 +181,12 @@ export async function getCurrentUser() {
   } = await supabase.auth.getUser();
 
   if (error) {
-    console.error(
-      "Error getting current user:",
-      error
-    );
-
     throw error;
   }
 
   return user;
 }
 
-/**
- * Get the current Supabase session.
- */
 export async function getCurrentSession() {
   const {
     data: { session },
@@ -113,11 +194,6 @@ export async function getCurrentSession() {
   } = await supabase.auth.getSession();
 
   if (error) {
-    console.error(
-      "Error getting current session:",
-      error
-    );
-
     throw error;
   }
 

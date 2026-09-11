@@ -1,16 +1,16 @@
 import {
-    createContext,
-    useCallback,
-    useContext,
-    useEffect,
-    useMemo,
-    useState,
-    type ReactNode,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
 } from "react";
 
 import {
-    getMyGroups,
-    type Group,
+  getMyGroups,
+  type Group,
 } from "../services/groupService";
 
 import { useAuth } from "./AuthContext";
@@ -47,8 +47,10 @@ export function GroupProvider({
   const [groups, setGroups] =
     useState<Group[]>([]);
 
-  const [currentGroup, setCurrentGroupState] =
-    useState<Group | null>(null);
+  const [
+    currentGroup,
+    setCurrentGroupState,
+  ] = useState<Group | null>(null);
 
   const [loading, setLoading] =
     useState(true);
@@ -70,15 +72,12 @@ export function GroupProvider({
 
         setGroups(fetchedGroups);
 
-        /*
-         * Keep the currently selected group
-         * if it still exists.
-         *
-         * Otherwise, default to the first
-         * group the player belongs to.
-         */
         setCurrentGroupState(
           (previousGroup) => {
+            /*
+             * If the currently selected group
+             * still exists, keep it selected.
+             */
             if (previousGroup) {
               const stillExists =
                 fetchedGroups.some(
@@ -88,10 +87,26 @@ export function GroupProvider({
                 );
 
               if (stillExists) {
-                return previousGroup;
+                /*
+                 * Use the freshly fetched
+                 * group object so any updated
+                 * group data is reflected.
+                 */
+                return (
+                  fetchedGroups.find(
+                    (group) =>
+                      group.id ===
+                      previousGroup.id
+                  ) ?? previousGroup
+                );
               }
             }
 
+            /*
+             * No selected group yet.
+             * Use the first group only as
+             * the default selection.
+             */
             return (
               fetchedGroups[0] ?? null
             );
@@ -144,13 +159,15 @@ export function GroupProvider({
   );
 
   return (
-    <GroupContext.Provider value={value}>
+    <GroupContext.Provider
+      value={value}
+    >
       {children}
     </GroupContext.Provider>
   );
 }
 
-export function useGroup() {
+export function useGroup(): GroupContextValue {
   const context =
     useContext(GroupContext);
 

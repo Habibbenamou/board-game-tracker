@@ -129,13 +129,21 @@ export async function getPlayerById(
   return data;
 }
 
-
-/**
- * Create the player identity for
- * the currently authenticated user.
- */
+//  * Create the player identity for the
+//  * currently authenticated user.
+//  *
+//  * Username:
+//  * - unique
+//  * - used for login
+//  * - normalized to lowercase
+//  *
+//  * Display name:
+//  * - shown throughout the app
+//  * - can contain spaces
+//  * - does not need to be unique
 export async function createMyPlayer(
-  name: string,
+  username: string,
+  displayName: string,
   avatarUrl: string | null = null
 ): Promise<Player> {
   const {
@@ -153,21 +161,112 @@ export async function createMyPlayer(
     );
   }
 
-  const trimmedName =
-    name.trim();
+  const normalizedUsername =
+    username.trim().toLowerCase();
 
-  if (!trimmedName) {
+  const trimmedDisplayName =
+    displayName.trim();
+
+  if (!normalizedUsername) {
     throw new Error(
-      "Player name is required."
+      "Username is required."
     );
   }
 
+  if (normalizedUsername.length < 3) {
+    throw new Error(
+      "Username must contain at least 3 characters."
+    );
+  }
+
+  if (
+    !/^[a-zA-Z0-9_]+$/.test(
+      normalizedUsername
+    )
+  ) {
+    throw new Error(
+      "Username can only contain letters, numbers, and underscores."
+    );
+  }
+
+  if (!trimmedDisplayName) {
+    throw new Error(
+      "Display name is required."
+    );
+  }
+
+  /*
+   * The database trigger normally creates
+   * the player automatically when the Auth
+   * user is created.
+   *
+   * We therefore first check whether the
+   * player already exists.
+   */
+  const {
+    data: existingPlayer,
+    error: existingPlayerError,
+  } =
+    await supabase
+      .from("players")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+  if (existingPlayerError) {
+    console.error(
+      "Error checking existing player:",
+      existingPlayerError
+    );
+
+    throw existingPlayerError;
+  }
+
+  /*
+   * Player already exists.
+   *
+   * Update it instead of trying to INSERT
+   * another row with the same user_id.
+   */
+  if (existingPlayer) {
+    const { data, error } =
+      await supabase
+        .from("players")
+        .update({
+          username:
+            normalizedUsername,
+          name: trimmedDisplayName,
+          avatar_url: avatarUrl,
+        })
+        .eq("id", existingPlayer.id)
+        .select()
+        .single();
+
+    if (error) {
+      console.error(
+        "Error updating player:",
+        error
+      );
+
+      throw error;
+    }
+
+    return data;
+  }
+
+  /*
+   * Fallback:
+   * If the trigger didn't create the
+   * player for some reason, create it here.
+   */
   const { data, error } =
     await supabase
       .from("players")
       .insert({
         user_id: user.id,
-        name: trimmedName,
+        username:
+          normalizedUsername,
+        name: trimmedDisplayName,
         avatar_url: avatarUrl,
       })
       .select()
@@ -185,10 +284,13 @@ export async function createMyPlayer(
   return data;
 }
 
-
 /**
  * Update the currently authenticated
  * user's player profile.
+ *
+ * Username is intentionally not updated
+ * here for the MVP. This keeps username
+ * changes out of the initial implementation.
  */
 export async function updateMyPlayer(
   updates: Pick<
