@@ -22,6 +22,7 @@ import {
   type Player,
 } from "../../services/playerService";
 
+import { useGroup } from "@/context/GroupContext";
 import {
   colors,
   radius,
@@ -43,10 +44,15 @@ export default function PlayScreen() {
 
   const [selectedPlayers, setSelectedPlayers] =
     useState<string[]>([]);
+  
+  
+  const {
+  currentGroup,
+  } = useGroup();
 
   useEffect(() => {
     loadGamesAndPlayers();
-  }, []);
+  }, [currentGroup?.id]);
 
   async function loadGamesAndPlayers() {
     try {

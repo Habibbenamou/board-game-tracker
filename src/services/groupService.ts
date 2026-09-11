@@ -2,8 +2,8 @@ import type {
   Tables,
   TablesInsert,
 } from "../types/database";
-import { getMyPlayer } from "./playerService";
 
+import { getMyPlayer } from "./playerService";
 import { supabase } from "./supabase";
 
 export type Group =
@@ -90,7 +90,7 @@ export async function createGroup(
       "No player profile found for the current user."
     );
   }
-  
+
   const trimmedName =
     name.trim();
 
@@ -187,6 +187,7 @@ export async function getMyGroups(): Promise<
       "No player profile found for the current user."
     );
   }
+
   const {
     data: memberships,
     error: membershipError,
@@ -258,6 +259,7 @@ export async function getMyGroupMemberships(): Promise<
       "No player profile found for the current user."
     );
   }
+
   const {
     data,
     error,
@@ -280,6 +282,7 @@ export async function getMyGroupMemberships(): Promise<
 
   return data ?? [];
 }
+
 
 /**
  * Join a group using its 6-character
@@ -350,6 +353,7 @@ export async function leaveGroup(
       "No player profile found for the current user."
     );
   }
+
   const {
     error,
   } = await supabase
@@ -372,4 +376,35 @@ export async function leaveGroup(
 
     throw error;
   }
+}
+
+
+/**
+ * Debug the authenticated user's
+ * player and group membership.
+ *
+ * TEMPORARY DEBUG FUNCTION.
+ */
+export async function debugMyMembership() {
+  const {
+    data,
+    error,
+  } = await (supabase.rpc as any)(
+    "debug_my_membership"
+  );
+
+  // console.log(
+  //   "DEBUG MY MEMBERSHIP:",
+  //   data
+  // );
+
+  // console.log(
+  //   "DEBUG MY MEMBERSHIP ERROR:",
+  //   error
+  // );
+
+  return {
+    data,
+    error,
+  };
 }

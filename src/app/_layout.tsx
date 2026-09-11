@@ -1,12 +1,14 @@
 import { Redirect, Stack } from "expo-router";
-import { useEffect, useState } from "react";
 
 import {
   AuthProvider,
   useAuth,
 } from "../context/AuthContext";
 
-import { getMyGroups } from "../services/groupService";
+import {
+  GroupProvider,
+  useGroup,
+} from "../context/GroupContext";
 
 function AppNavigator() {
   const {
@@ -14,52 +16,14 @@ function AppNavigator() {
     loading: authLoading,
   } = useAuth();
 
-  const [checkingGroup, setCheckingGroup] =
-    useState(true);
-
-  const [hasGroup, setHasGroup] =
-    useState(false);
-
-  useEffect(() => {
-    if (!session) {
-      setHasGroup(false);
-      setCheckingGroup(false);
-      return;
-    }
-
-    checkGroupMembership();
-  }, [session]);
-
-  async function checkGroupMembership() {
-    try {
-      setCheckingGroup(true);
-
-      const groups =
-        await getMyGroups();
-
-      setHasGroup(
-        groups.length > 0
-      );
-    } catch (error) {
-      console.error(
-        "Error checking group membership:",
-        error
-      );
-
-      /*
-       * If we cannot determine the user's
-       * groups, don't automatically send
-       * them into the main application.
-       */
-      setHasGroup(false);
-    } finally {
-      setCheckingGroup(false);
-    }
-  }
+  const {
+    groups,
+    loading: groupLoading,
+  } = useGroup();
 
   if (
     authLoading ||
-    checkingGroup
+    groupLoading
   ) {
     return null;
   }
@@ -96,6 +60,13 @@ function AppNavigator() {
         />
 
         <Stack.Screen
+          name="player-profile"
+          options={{
+            title: "Player Profile",
+          }}
+        />
+
+        <Stack.Screen
           name="record-session"
           options={{
             title: "Record Session",
@@ -126,7 +97,7 @@ function AppNavigator() {
 
       {!session ? (
         <Redirect href="/login" />
-      ) : !hasGroup ? (
+      ) : groups.length === 0 ? (
         <Redirect href="/group-setup" />
       ) : (
         <Redirect href="/(tabs)" />
@@ -138,7 +109,9 @@ function AppNavigator() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <AppNavigator />
+      <GroupProvider>
+        <AppNavigator />
+      </GroupProvider>
     </AuthProvider>
   );
 }
