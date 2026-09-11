@@ -1,38 +1,48 @@
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
-import { router, useFocusEffect } from "expo-router";
+import {
+  router,
+  useFocusEffect,
+} from "expo-router";
+
 import { useCallback, useState } from "react";
 
 import {
-    getGameSessions,
-    type GameSession,
+  getGameSessionsByGroupId,
+  type GameSession,
 } from "../services/gameSessionService";
 
 import {
-    getGames,
-    type Game,
+  getGamesByGroupId,
+  type Game,
 } from "../services/gameService";
 
 import {
-    colors,
-    radius,
-    spacing,
+  colors,
+  radius,
+  spacing,
 } from "../constants/theme";
+
+import { useGroup } from "../context/GroupContext";
 
 type SessionWithGame = GameSession & {
   game: Game | null;
 };
 
 export default function GameSessionsScreen() {
+  const {
+    currentGroup,
+  } = useGroup();
+
   const [sessions, setSessions] =
     useState<SessionWithGame[]>([]);
 
@@ -42,18 +52,29 @@ export default function GameSessionsScreen() {
   useFocusEffect(
     useCallback(() => {
       loadSessions();
-    }, [])
+    }, [currentGroup?.id])
   );
 
   async function loadSessions() {
     try {
       setLoading(true);
 
-      const [sessionsData, gamesData] =
-        await Promise.all([
-          getGameSessions(),
-          getGames(),
-        ]);
+      if (!currentGroup) {
+        setSessions([]);
+        return;
+      }
+
+      const [
+        sessionsData,
+        gamesData,
+      ] = await Promise.all([
+        getGameSessionsByGroupId(
+          currentGroup.id
+        ),
+        getGamesByGroupId(
+          currentGroup.id
+        ),
+      ]);
 
       const sessionsWithGames =
         sessionsData.map((session) => ({
@@ -61,11 +82,14 @@ export default function GameSessionsScreen() {
           game:
             gamesData.find(
               (game) =>
-                game.id === session.game_id
+                game.id ===
+                session.game_id
             ) ?? null,
         }));
 
-      setSessions(sessionsWithGames);
+      setSessions(
+        sessionsWithGames
+      );
     } catch (error) {
       console.error(
         "Error loading game sessions:",
@@ -177,6 +201,25 @@ export default function GameSessionsScreen() {
     );
   }
 
+  if (!currentGroup) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.emptyEmoji}>
+          👥
+        </Text>
+
+        <Text style={styles.emptyTitle}>
+          No group selected
+        </Text>
+
+        <Text style={styles.emptyText}>
+          Select or join a group to see
+          its game history.
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>
@@ -184,6 +227,8 @@ export default function GameSessionsScreen() {
       </Text>
 
       <Text style={styles.subtitle}>
+        {currentGroup.name}
+        {" • "}
         Review the games you've played.
       </Text>
 
@@ -198,14 +243,17 @@ export default function GameSessionsScreen() {
           </Text>
 
           <Text style={styles.emptyText}>
-            Your recorded game sessions will
-            appear here.
+            Your recorded game sessions for{" "}
+            {currentGroup.name} will appear
+            here.
           </Text>
 
           <TouchableOpacity
             style={styles.playButton}
             onPress={() =>
-              router.push("/(tabs)/play")
+              router.push(
+                "/(tabs)/play"
+              )
             }
             activeOpacity={0.8}
           >

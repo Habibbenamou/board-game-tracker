@@ -10,6 +10,7 @@ import {
 
 import {
   router,
+  useFocusEffect,
 } from "expo-router";
 
 import {
@@ -17,8 +18,6 @@ import {
   useMemo,
   useState,
 } from "react";
-
-import { useFocusEffect } from "expo-router";
 
 import GameCard from "../../components/GameCard";
 
@@ -29,35 +28,59 @@ import {
 } from "../../constants/theme";
 
 import {
-  getGames,
+  getGamesByGroupId,
   type Game,
 } from "../../services/gameService";
 
+import { useGroup } from "../../context/GroupContext";
+
 export default function GamesScreen() {
-  const [games, setGames] = useState<Game[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    currentGroup,
+  } = useGroup();
+
+  const [games, setGames] =
+    useState<Game[]>([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
   const [error, setError] =
     useState<string | null>(null);
-  const [search, setSearch] = useState("");
 
-  const loadGames = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const [search, setSearch] =
+    useState("");
 
-      const data = await getGames();
+  const loadGames =
+    useCallback(async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-      setGames(data);
-    } catch (err) {
-      console.error(err);
+        if (!currentGroup) {
+          setGames([]);
+          return;
+        }
 
-      setError(
-        "Unable to load your games."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+        const data =
+          await getGamesByGroupId(
+            currentGroup.id
+          );
+
+        setGames(data);
+      } catch (err) {
+        console.error(
+          "Error loading games:",
+          err
+        );
+
+        setError(
+          "Unable to load your games."
+        );
+      } finally {
+        setLoading(false);
+      }
+    }, [currentGroup?.id]);
 
   useFocusEffect(
     useCallback(() => {
@@ -107,6 +130,37 @@ export default function GamesScreen() {
         <Text style={styles.errorText}>
           {error}
         </Text>
+
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={loadGames}
+          activeOpacity={0.8}
+        >
+          <Text
+            style={styles.retryButtonText}
+          >
+            Retry
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (!currentGroup) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.emptyIcon}>
+          👥
+        </Text>
+
+        <Text style={styles.emptyTitle}>
+          No group yet
+        </Text>
+
+        <Text style={styles.emptyText}>
+          Join or create a group to see
+          its games.
+        </Text>
       </View>
     );
   }
@@ -118,14 +172,22 @@ export default function GamesScreen() {
       </Text>
 
       <Text style={styles.subtitle}>
-        {games.length} games in your collection
+        {currentGroup.name}
+        {" • "}
+        {games.length}{" "}
+        {games.length === 1
+          ? "game"
+          : "games"}{" "}
+        in your collection
       </Text>
 
       <TextInput
         value={search}
         onChangeText={setSearch}
         placeholder="Search games..."
-        placeholderTextColor={colors.textMuted}
+        placeholderTextColor={
+          colors.textMuted
+        }
         style={styles.search}
       />
 
@@ -136,7 +198,9 @@ export default function GamesScreen() {
         }
         numColumns={2}
         columnWrapperStyle={styles.row}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={
+          styles.list
+        }
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
           <GameCard
@@ -151,8 +215,6 @@ export default function GamesScreen() {
             maxPlaytime={
               item.max_playtime_minutes
             }
-
-            // Added onPress to allow GameCard to be clickable and redirect to game detail screen
             onPress={() =>
               router.push({
                 pathname: "/games/[id]",
@@ -169,12 +231,18 @@ export default function GamesScreen() {
               🎲
             </Text>
 
-            <Text style={styles.emptyTitle}>
-              No games found
+            <Text
+              style={styles.emptyTitle}
+            >
+              {search.trim()
+                ? "No games found"
+                : "No games yet"}
             </Text>
 
             <Text style={styles.emptyText}>
-              Try a different search.
+              {search.trim()
+                ? "Try a different search."
+                : `Add a game to ${currentGroup.name}'s collection.`}
             </Text>
           </View>
         }
@@ -187,7 +255,9 @@ export default function GamesScreen() {
         }
         activeOpacity={0.8}
       >
-        <Text style={styles.addButtonText}>
+        <Text
+          style={styles.addButtonText}
+        >
           + Add Game
         </Text>
       </TouchableOpacity>
@@ -273,6 +343,22 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
+  retryButton: {
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.lg,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  retryButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+
   empty: {
     alignItems: "center",
     marginTop: 80,
@@ -292,5 +378,6 @@ const styles = StyleSheet.create({
   emptyText: {
     marginTop: 6,
     color: colors.textSecondary,
+    textAlign: "center",
   },
 });

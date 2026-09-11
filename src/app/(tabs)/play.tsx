@@ -10,24 +10,29 @@ import {
 } from "react-native";
 
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import {
+  useCallback,
+  useState,
+} from "react";
+
+import { useFocusEffect } from "expo-router";
 
 import {
-  getGames,
+  getGamesByGroupId,
   type Game,
 } from "../../services/gameService";
 
 import {
-  getPlayers,
+  getPlayersByGroupId,
   type Player,
 } from "../../services/playerService";
 
-import { useGroup } from "@/context/GroupContext";
 import {
   colors,
   radius,
   spacing,
 } from "../../constants/theme";
+import { useGroup } from "../../context/GroupContext";
 
 export default function PlayScreen() {
   const [games, setGames] =
@@ -50,22 +55,43 @@ export default function PlayScreen() {
   currentGroup,
   } = useGroup();
 
-  useEffect(() => {
+  useFocusEffect(
+  useCallback(() => {
     loadGamesAndPlayers();
-  }, [currentGroup?.id]);
+  }, [currentGroup?.id])
+  );
 
   async function loadGamesAndPlayers() {
     try {
       setLoading(true);
 
-      const [gamesData, playersData] =
-        await Promise.all([
-          getGames(),
-          getPlayers(),
-        ]);
+      if (!currentGroup) {
+        setGames([]);
+        setPlayers([]);
+        setSelectedGame(null);
+        setSelectedPlayers([]);
+        return;
+      }
+
+      const [
+        gamesData,
+        playersData,
+      ] = await Promise.all([
+        getGamesByGroupId(
+          currentGroup.id
+        ),
+        getPlayersByGroupId(
+          currentGroup.id
+        ),
+      ]);
 
       setGames(gamesData);
       setPlayers(playersData);
+
+      // Clear selections when the
+      // active group changes.
+      setSelectedGame(null);
+      setSelectedPlayers([]);
     } catch (error) {
       console.error(
         "Error loading games and players:",

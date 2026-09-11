@@ -87,3 +87,23 @@ export async function deleteGame(
     throw error;
   }
 }
+
+export async function getGamesByGroupId(
+  groupId: string
+): Promise<Game[]> {
+  if (!groupId) {
+    throw new Error("Group ID is required.");
+  }
+
+  const { data, error } = await supabase
+    .from("games")
+    .select("*")
+    .eq("group_id", groupId)
+    .order("name", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
+}

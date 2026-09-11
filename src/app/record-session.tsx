@@ -23,7 +23,7 @@ import {
 } from "../services/gameService";
 
 import {
-  getPlayers,
+  getPlayersByGroupId,
   type Player,
 } from "../services/playerService";
 
@@ -41,6 +41,8 @@ import {
   spacing,
 } from "../constants/theme";
 
+import { useGroup } from "../context/GroupContext";
+
 type PlayerResult = {
   playerId: string;
   score: string;
@@ -56,6 +58,10 @@ export default function RecordSessionScreen() {
     gameId: string;
     playerIds: string;
   }>();
+
+  const {
+    currentGroup,
+  } = useGroup();
 
   const [game, setGame] =
     useState<Game | null>(null);
@@ -87,7 +93,11 @@ export default function RecordSessionScreen() {
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [])
+    }, [
+      gameId,
+      playerIds,
+      currentGroup?.id,
+    ])
   );
 
   async function loadData() {
@@ -100,6 +110,12 @@ export default function RecordSessionScreen() {
         );
       }
 
+      if (!currentGroup) {
+        throw new Error(
+          "No current group selected."
+        );
+      }
+
       const parsedPlayerIds: string[] =
         JSON.parse(playerIds);
 
@@ -108,8 +124,29 @@ export default function RecordSessionScreen() {
         playersData,
       ] = await Promise.all([
         getGameById(gameId),
-        getPlayers(),
+        getPlayersByGroupId(
+          currentGroup.id
+        ),
       ]);
+
+      /*
+       * Make sure the selected game
+       * belongs to the current group.
+       *
+       * This prevents recording a session
+       * for a game from another group if the
+       * user switches groups while this screen
+       * is open.
+       */
+      if (
+        !gameData ||
+        gameData.group_id !==
+          currentGroup.id
+      ) {
+        throw new Error(
+          "The selected game does not belong to the current group."
+        );
+      }
 
       const selectedPlayers =
         playersData.filter((player) =>
@@ -117,6 +154,14 @@ export default function RecordSessionScreen() {
             player.id
           )
         );
+
+      if (
+        selectedPlayers.length === 0
+      ) {
+        throw new Error(
+          "No selected players belong to the current group."
+        );
+      }
 
       setGame(gameData);
       setPlayers(selectedPlayers);
@@ -225,110 +270,119 @@ export default function RecordSessionScreen() {
     return dateTime.toISOString();
   }
 
-function validateResults(): boolean {
-  /*
-   * Placements are optional.
-   *
-   * If a placement is provided,
-   * it must be a whole number starting from 1.
-   */
-  const placements = results
-    .filter(
-      (result) =>
-        result.placement.trim() !== ""
-    )
-    .map((result) =>
-      Number(result.placement)
-    );
-
-  /*
-   * Validate provided placements.
-   */
-  if (
-    placements.some(
-      (placement) =>
-        !Number.isInteger(placement) ||
-        placement < 1
-    )
-  ) {
-    Alert.alert(
-      "Invalid placement",
-      "Placements must be whole numbers starting from 1."
-    );
-
-    return false;
-  }
-
-  /*
-   * Make sure provided placements are unique.
-   *
-   * Empty placements are ignored.
-   */
-  const uniquePlacements =
-    new Set(placements);
-
-  if (
-    uniquePlacements.size !==
-    placements.length
-  ) {
-    Alert.alert(
-      "Duplicate placement",
-      "Each player must have a different placement."
-    );
-
-    return false;
-  }
-
-  /*
-   * Scores are optional.
-   *
-   * If provided, they must be valid numbers.
-   */
-  const invalidScore =
-    results.some((result) => {
-      if (!result.score.trim()) {
-        return false;
-      }
-
-      return Number.isNaN(
-        Number(result.score)
+  function validateResults(): boolean {
+    /*
+     * Placements are optional.
+     *
+     * If a placement is provided,
+     * it must be a whole number starting from 1.
+     */
+    const placements = results
+      .filter(
+        (result) =>
+          result.placement.trim() !== ""
+      )
+      .map((result) =>
+        Number(result.placement)
       );
-    });
 
-  if (invalidScore) {
-    Alert.alert(
-      "Invalid score",
-      "Scores must be valid numbers."
-    );
+    /*
+     * Validate provided placements.
+     */
+    if (
+      placements.some(
+        (placement) =>
+          !Number.isInteger(placement) ||
+          placement < 1
+      )
+    ) {
+      Alert.alert(
+        "Invalid placement",
+        "Placements must be whole numbers starting from 1."
+      );
 
-    return false;
+      return false;
+    }
+
+    /*
+     * Make sure provided placements are unique.
+     *
+     * Empty placements are ignored.
+     */
+    const uniquePlacements =
+      new Set(placements);
+
+    if (
+      uniquePlacements.size !==
+      placements.length
+    ) {
+      Alert.alert(
+        "Duplicate placement",
+        "Each player must have a different placement."
+      );
+
+      return false;
+    }
+
+    /*
+     * Scores are optional.
+     *
+     * If provided, they must be valid numbers.
+     */
+    const invalidScore =
+      results.some((result) => {
+        if (!result.score.trim()) {
+          return false;
+        }
+
+        return Number.isNaN(
+          Number(result.score)
+        );
+      });
+
+    if (invalidScore) {
+      Alert.alert(
+        "Invalid score",
+        "Scores must be valid numbers."
+      );
+
+      return false;
+    }
+
+    /*
+     * Require exactly one winner.
+     */
+    const winnerCount =
+      results.filter(
+        (result) => result.isWinner
+      ).length;
+
+    if (winnerCount !== 1) {
+      Alert.alert(
+        "Select a winner",
+        "Please select exactly one winner."
+      );
+
+      return false;
+    }
+
+    return true;
   }
-
-  /*
-   * Require exactly one winner.
-   */
-  const winnerCount =
-    results.filter(
-      (result) => result.isWinner
-    ).length;
-
-  if (winnerCount !== 1) {
-    Alert.alert(
-      "Select a winner",
-      "Please select exactly one winner."
-    );
-
-    return false;
-  }
-
-  return true;
-}
 
   async function handleSaveSession() {
     if (!gameId) {
       Alert.alert(
         "Error",
         "Game information is missing."
+      );
+
+      return;
+    }
+
+    if (!currentGroup) {
+      Alert.alert(
+        "Error",
+        "No current group is selected."
       );
 
       return;
@@ -350,9 +404,13 @@ function validateResults(): boolean {
 
       /*
        * 1. Create the game session.
+       *
+       * The session now explicitly belongs
+       * to the currently selected group.
        */
       const session =
         await createGameSession({
+          group_id: currentGroup.id,
           game_id: gameId,
           played_at: playedAt,
           notes:
