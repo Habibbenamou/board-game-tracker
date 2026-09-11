@@ -15,9 +15,7 @@ import {
   updatePlayer,
 } from "../services/playerService";
 
-import {
-  getMyGroups,
-} from "../services/groupService";
+import { useGroup } from "../context/GroupContext";
 
 import {
   uploadPlayerImage,
@@ -26,6 +24,10 @@ import {
 export default function AddPlayerScreen() {
   const [saving, setSaving] =
     useState(false);
+
+  const {
+    currentGroup,
+  } = useGroup();  
 
   async function handleCreatePlayer(
     data: PlayerFormData,
@@ -51,23 +53,14 @@ export default function AddPlayerScreen() {
        * Players screen currently uses the
        * first group as the active group.
        */
-      const groups =
-        await getMyGroups();
-
-      if (
-        !groups ||
-        groups.length === 0
-      ) {
+      if (!currentGroup) {
         Alert.alert(
           "No group",
           "Please join or create a group before adding a player."
         );
 
         return;
-      }
-
-      const currentGroup =
-        groups[0];
+}
 
       /*
        * Create the guest player and add

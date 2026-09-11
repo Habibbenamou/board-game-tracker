@@ -26,17 +26,15 @@ import {
   type Player,
 } from "../services/playerService";
 
-import {
-  getMyGroups,
-  type Group,
-} from "../services/groupService";
+import { useGroup } from "../context/GroupContext";
 
 export default function PlayersScreen() {
   const [players, setPlayers] =
     useState<Player[]>([]);
 
-  const [currentGroup, setCurrentGroup] =
-    useState<Group | null>(null);
+  const {
+    currentGroup,
+  } = useGroup();
 
   const [myPlayer, setMyPlayer] =
     useState<Player | null>(null);
@@ -47,56 +45,55 @@ export default function PlayersScreen() {
   const [error, setError] =
     useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadPlayers();
-    }, [])
-  );
+useFocusEffect(
+  useCallback(() => {
+    loadPlayers();
+  }, [currentGroup?.id])
+);
 
-  async function loadPlayers() {
-    try {
-      setLoading(true);
-      setError(false);
+ async function loadPlayers() {
+  try {
+    setLoading(true);
+    setError(false);
 
-      const currentPlayer =
-        await getMyPlayer();
+    /*
+     * Get the current user's player.
+     */
+    const currentPlayer =
+      await getMyPlayer();
 
-      setMyPlayer(currentPlayer);
+    setMyPlayer(currentPlayer);
 
-      const groups =
-        await getMyGroups();
+    /*
+     * Use the group selected in the
+     * global GroupContext.
+     */
+    if (!currentGroup) {
+      setPlayers([]);
+      return;
+    }
 
-      if (
-        !groups ||
-        groups.length === 0
-      ) {
-        setCurrentGroup(null);
-        setPlayers([]);
-        return;
-      }
-
-      const group =
-        groups[0];
-
-      setCurrentGroup(group);
-
-      const groupPlayers =
-        await getPlayersByGroupId(
-          group.id
-        );
-
-      setPlayers(groupPlayers);
-    } catch (error) {
-      console.error(
-        "Error loading players:",
-        error
+    /*
+     * Load players belonging to the
+     * currently selected group.
+     */
+    const groupPlayers =
+      await getPlayersByGroupId(
+        currentGroup.id
       );
 
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
+    setPlayers(groupPlayers);
+  } catch (error) {
+    console.error(
+      "Error loading players:",
+      error
+    );
+
+    setError(true);
+  } finally {
+    setLoading(false);
   }
+}
 
   function handlePlayerPress(
     player: Player

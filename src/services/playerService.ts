@@ -313,8 +313,10 @@ export async function updatePlayer(
  * Create a guest player and add them
  * to the specified group.
  *
- * Guest players do not have an auth user,
- * so user_id remains null.
+ * This is performed through a database
+ * function so that creating the player
+ * and adding them to the group happen
+ * as one operation.
  */
 export async function createGuestPlayer(
   groupId: string,
@@ -337,52 +339,33 @@ export async function createGuestPlayer(
   }
 
   const {
-    data: player,
-    error: playerError,
-  } =
-    await supabase
-      .from("players")
-      .insert({
-        user_id: null,
-        name: trimmedName,
-        avatar_url: avatarUrl,
-      })
-      .select()
-      .single();
+    data,
+    error,
+  } = await (supabase.rpc as any)(
+    "create_guest_player",
+    {
+      p_group_id: groupId,
+      p_name: trimmedName,
+      p_avatar_url: avatarUrl,
+    }
+  );
 
-  if (playerError) {
+  if (error) {
     console.error(
       "Error creating guest player:",
-      playerError
+      error
     );
 
-    throw playerError;
+    throw error;
   }
 
-  const {
-    error: membershipError,
-  } = await supabase
-    .from("group_members")
-    .insert({
-      group_id: groupId,
-      player_id: player.id,
-    });
-
-  if (membershipError) {
-    console.error(
-      "Error adding guest player to group:",
-      membershipError
+  if (!data) {
+    throw new Error(
+      "Guest player was not created."
     );
-
-    await supabase
-      .from("players")
-      .delete()
-      .eq("id", player.id);
-
-    throw membershipError;
   }
 
-  return player;
+  return data as Player;
 }
 
 
