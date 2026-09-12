@@ -1,11 +1,10 @@
 import {
-  ActivityIndicator,
   FlatList,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
-  View,
+  View
 } from "react-native";
 
 import {
@@ -18,6 +17,14 @@ import {
   useMemo,
   useState,
 } from "react";
+
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 
 import GameCard from "../../components/GameCard";
 
@@ -33,6 +40,126 @@ import {
 } from "../../services/gameService";
 
 import { useGroup } from "../../context/GroupContext";
+
+const AnimatedPressable =
+  Animated.createAnimatedComponent(Pressable);
+
+function formatPlayers(
+  minPlayers: number | null,
+  maxPlayers: number | null
+): string | undefined {
+  if (
+    minPlayers == null &&
+    maxPlayers == null
+  ) {
+    return undefined;
+  }
+
+  if (
+    minPlayers != null &&
+    maxPlayers != null
+  ) {
+    if (minPlayers === maxPlayers) {
+      return `${minPlayers} player${
+        minPlayers === 1 ? "" : "s"
+      }`;
+    }
+
+    return `${minPlayers}-${maxPlayers} players`;
+  }
+
+  if (minPlayers != null) {
+    return `${minPlayers}+ players`;
+  }
+
+  if (maxPlayers != null) {
+    return `Up to ${maxPlayers} players`;
+  }
+
+  return undefined;
+}
+
+function formatPlaytime(
+  minPlaytime: number | null,
+  maxPlaytime: number | null
+): string | undefined {
+  if (
+    minPlaytime == null &&
+    maxPlaytime == null
+  ) {
+    return undefined;
+  }
+
+  if (
+    minPlaytime != null &&
+    maxPlaytime != null
+  ) {
+    if (minPlaytime === maxPlaytime) {
+      return `${minPlaytime} min`;
+    }
+
+    return `${minPlaytime}-${maxPlaytime} min`;
+  }
+
+  if (minPlaytime != null) {
+    return `${minPlaytime}+ min`;
+  }
+
+  if (maxPlaytime != null) {
+    return `Up to ${maxPlaytime} min`;
+  }
+
+  return undefined;
+}
+
+function AddGameButton({
+  onPress,
+}: {
+  onPress: () => void;
+}) {
+  const pressed = useSharedValue(0);
+
+  const animatedStyle =
+    useAnimatedStyle(() => ({
+      transform: [
+        {
+          scale: withSpring(
+            pressed.value ? 0.97 : 1,
+            {
+              damping: 18,
+              stiffness: 300,
+            }
+          ),
+        },
+      ],
+    }));
+
+  return (
+    <AnimatedPressable
+      style={[
+        styles.addButton,
+        animatedStyle,
+      ]}
+      onPress={onPress}
+      onPressIn={() => {
+        pressed.value = 1;
+      }}
+      onPressOut={() => {
+        pressed.value = 0;
+      }}
+    >
+      <Ionicons
+        name="add"
+        size={21}
+        color={colors.white}
+      />
+
+      <Text style={styles.addButtonText}>
+        Add Game
+      </Text>
+    </AnimatedPressable>
+  );
+}
 
 export default function GamesScreen() {
   const {
@@ -109,16 +236,26 @@ export default function GamesScreen() {
     });
   }, [games, search]);
 
+  const hasSearch =
+    search.trim().length > 0;
+
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator
-          size="large"
-          color={colors.primary}
-        />
+        <View style={styles.loadingIcon}>
+          <Ionicons
+            name="dice-outline"
+            size={30}
+            color={colors.primaryLight}
+          />
+        </View>
+
+        <Text style={styles.loadingTitle}>
+          Loading games
+        </Text>
 
         <Text style={styles.loadingText}>
-          Loading games...
+          Getting your collection...
         </Text>
       </View>
     );
@@ -127,21 +264,40 @@ export default function GamesScreen() {
   if (error) {
     return (
       <View style={styles.center}>
-        <Text style={styles.errorText}>
+        <View style={styles.stateIconDanger}>
+          <Ionicons
+            name="alert-circle-outline"
+            size={30}
+            color={colors.danger}
+          />
+        </View>
+
+        <Text style={styles.emptyTitle}>
+          Something went wrong
+        </Text>
+
+        <Text style={styles.emptyText}>
           {error}
         </Text>
 
-        <TouchableOpacity
-          style={styles.retryButton}
+        <Pressable
+          style={({ pressed }) => [
+            styles.retryButton,
+            pressed &&
+              styles.buttonPressed,
+          ]}
           onPress={loadGames}
-          activeOpacity={0.8}
         >
-          <Text
-            style={styles.retryButtonText}
-          >
+          <Ionicons
+            name="refresh-outline"
+            size={18}
+            color={colors.white}
+          />
+
+          <Text style={styles.retryButtonText}>
             Retry
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     );
   }
@@ -149,9 +305,13 @@ export default function GamesScreen() {
   if (!currentGroup) {
     return (
       <View style={styles.center}>
-        <Text style={styles.emptyIcon}>
-          👥
-        </Text>
+        <View style={styles.stateIcon}>
+          <Ionicons
+            name="people-outline"
+            size={30}
+            color={colors.primaryLight}
+          />
+        </View>
 
         <Text style={styles.emptyTitle}>
           No group yet
@@ -167,29 +327,93 @@ export default function GamesScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>
-        Games
-      </Text>
+      {/* Header */}
 
-      <Text style={styles.subtitle}>
-        {currentGroup.name}
-        {" • "}
-        {games.length}{" "}
-        {games.length === 1
-          ? "game"
-          : "games"}{" "}
-        in your collection
-      </Text>
+      <View style={styles.header}>
+        <View style={styles.headerText}>
+          <Text style={styles.title}>
+            Games
+          </Text>
 
-      <TextInput
-        value={search}
-        onChangeText={setSearch}
-        placeholder="Search games..."
-        placeholderTextColor={
-          colors.textMuted
-        }
-        style={styles.search}
-      />
+          <View style={styles.collectionRow}>
+            <Text
+              style={styles.subtitle}
+              numberOfLines={1}
+            >
+              {currentGroup.name}
+            </Text>
+
+            <View style={styles.dot} />
+
+            <Text style={styles.gameCount}>
+              {games.length}{" "}
+              {games.length === 1
+                ? "game"
+                : "games"}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.headerIcon}>
+          <Ionicons
+            name="dice-outline"
+            size={25}
+            color={colors.primaryLight}
+          />
+        </View>
+      </View>
+
+      {/* Search */}
+
+      <View style={styles.searchContainer}>
+        <Ionicons
+          name="search-outline"
+          size={20}
+          color={colors.textMuted}
+        />
+
+        <TextInput
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search games..."
+          placeholderTextColor={
+            colors.textMuted
+          }
+          style={styles.searchInput}
+          returnKeyType="search"
+          autoCorrect={false}
+          autoCapitalize="none"
+        />
+
+        {hasSearch && (
+          <Pressable
+            onPress={() => setSearch("")}
+            hitSlop={8}
+            style={styles.clearButton}
+          >
+            <Ionicons
+              name="close-circle"
+              size={20}
+              color={colors.textMuted}
+            />
+          </Pressable>
+        )}
+      </View>
+
+      {/* Search results count */}
+
+      {hasSearch && (
+        <View style={styles.resultsRow}>
+          <Text style={styles.resultsText}>
+            {filteredGames.length}{" "}
+            {filteredGames.length === 1
+              ? "result"
+              : "results"}
+          </Text>
+        </View>
+      )}
+
+      {/* Games */}
 
       <FlatList
         data={filteredGames}
@@ -198,23 +422,26 @@ export default function GamesScreen() {
         }
         numColumns={2}
         columnWrapperStyle={styles.row}
-        contentContainerStyle={
-          styles.list
-        }
+        contentContainerStyle={[
+          styles.list,
+          filteredGames.length === 0 &&
+            styles.listEmpty,
+        ]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => (
           <GameCard
             name={item.name}
             category={item.category}
             imageUrl={item.image_url}
-            minPlayers={item.min_players}
-            maxPlayers={item.max_players}
-            minPlaytime={
-              item.min_playtime_minutes
-            }
-            maxPlaytime={
+            players={formatPlayers(
+              item.min_players,
+              item.max_players
+            )}
+            playtime={formatPlaytime(
+              item.min_playtime_minutes,
               item.max_playtime_minutes
-            }
+            )}
             onPress={() =>
               router.push({
                 pathname: "/games/[id]",
@@ -227,40 +454,71 @@ export default function GamesScreen() {
         )}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyIcon}>
-              🎲
-            </Text>
+            <View style={styles.emptyIconContainer}>
+              <Ionicons
+                name={
+                  hasSearch
+                    ? "search-outline"
+                    : "dice-outline"
+                }
+                size={32}
+                color={colors.primaryLight}
+              />
+            </View>
 
-            <Text
-              style={styles.emptyTitle}
-            >
-              {search.trim()
+            <Text style={styles.emptyTitle}>
+              {hasSearch
                 ? "No games found"
                 : "No games yet"}
             </Text>
 
             <Text style={styles.emptyText}>
-              {search.trim()
+              {hasSearch
                 ? "Try a different search."
                 : `Add a game to ${currentGroup.name}'s collection.`}
             </Text>
+
+            {!hasSearch && (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.emptyAddButton,
+                  pressed &&
+                    styles.buttonPressed,
+                ]}
+                onPress={() =>
+                  router.push("/add-game")
+                }
+              >
+                <Ionicons
+                  name="add"
+                  size={20}
+                  color={colors.white}
+                />
+
+                <Text
+                  style={
+                    styles.emptyAddButtonText
+                  }
+                >
+                  Add your first game
+                </Text>
+              </Pressable>
+            )}
           </View>
         }
       />
 
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() =>
-          router.push("/add-game")
-        }
-        activeOpacity={0.8}
-      >
-        <Text
-          style={styles.addButtonText}
-        >
-          + Add Game
-        </Text>
-      </TouchableOpacity>
+      {/* Floating-ish bottom Add Game button */}
+
+      {filteredGames.length > 0 && (
+        <View style={styles.addButtonContainer}>
+          <AddGameButton
+            onPress={() =>
+              router.push("/add-game")
+            }
+          />
+        </View>
+      )}
     </View>
   );
 }
@@ -269,55 +527,112 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingTop: 60,
+    paddingTop: 58,
+  },
+
+  header: {
+    paddingHorizontal: spacing.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  headerText: {
+    flex: 1,
+    minWidth: 0,
   },
 
   title: {
     fontSize: 30,
+    lineHeight: 36,
     fontWeight: "800",
     color: colors.text,
-    paddingHorizontal: spacing.lg,
+  },
+
+  collectionRow: {
+    marginTop: 5,
+    flexDirection: "row",
+    alignItems: "center",
   },
 
   subtitle: {
-    marginTop: 6,
+    flexShrink: 1,
     color: colors.textSecondary,
-    paddingHorizontal: spacing.lg,
+    fontSize: 14,
+    fontWeight: "500",
   },
 
-  addButton: {
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.md,
-    height: 46,
+  dot: {
+    width: 3,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: colors.textMuted,
+    marginHorizontal: 7,
+  },
+
+  gameCount: {
+    color: colors.textMuted,
+    fontSize: 13,
+    fontWeight: "500",
+  },
+
+  headerIcon: {
+    width: 48,
+    height: 48,
     borderRadius: radius.md,
-    backgroundColor: colors.primary,
+    marginLeft: spacing.md,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
 
-  addButtonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "700",
-  },
-
-  search: {
+  searchContainer: {
+    height: 50,
     marginHorizontal: spacing.lg,
-    marginTop: spacing.md,
-    height: 48,
-    borderWidth: 1,
-    borderColor: colors.border,
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.md,
     borderRadius: radius.md,
     backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  searchInput: {
+    flex: 1,
+    marginLeft: spacing.sm,
+    paddingVertical: 0,
     color: colors.text,
     fontSize: 15,
   },
 
+  clearButton: {
+    marginLeft: spacing.sm,
+  },
+
+  resultsRow: {
+    paddingHorizontal: spacing.lg,
+    marginTop: 8,
+  },
+
+  resultsText: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
   list: {
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: 18,
     gap: spacing.md,
-    paddingBottom: 100,
+  },
+
+  listEmpty: {
+    flexGrow: 1,
   },
 
   row: {
@@ -325,59 +640,164 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
 
+  addButtonContainer: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+    backgroundColor: colors.background,
+  },
+
+  addButton: {
+    height: 50,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+  },
+
+  addButtonText: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+
+  buttonPressed: {
+    opacity: 0.78,
+    transform: [
+      {
+        scale: 0.98,
+      },
+    ],
+  },
+
+  empty: {
+    flex: 1,
+    minHeight: 320,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing.xl,
+  },
+
+  emptyIconContainer: {
+    width: 68,
+    height: 68,
+    borderRadius: radius.xl,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.md,
+  },
+
+  emptyTitle: {
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: "700",
+    color: colors.text,
+    textAlign: "center",
+  },
+
+  emptyText: {
+    marginTop: 7,
+    maxWidth: 300,
+    color: colors.textSecondary,
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: "center",
+  },
+
+  emptyAddButton: {
+    marginTop: spacing.lg,
+    height: 44,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+  },
+
+  emptyAddButtonText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+
   center: {
     flex: 1,
     backgroundColor: colors.background,
     alignItems: "center",
     justifyContent: "center",
-    padding: spacing.lg,
+    paddingHorizontal: spacing.xl,
   },
 
-  loadingText: {
-    marginTop: spacing.md,
-    color: colors.textSecondary,
-  },
-
-  errorText: {
-    color: colors.danger,
-    textAlign: "center",
-  },
-
-  retryButton: {
-    marginTop: spacing.md,
-    paddingHorizontal: spacing.lg,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: colors.primary,
+  loadingIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: radius.xl,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
 
-  retryButtonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "700",
-  },
-
-  empty: {
-    alignItems: "center",
-    marginTop: 80,
-  },
-
-  emptyIcon: {
-    fontSize: 48,
-  },
-
-  emptyTitle: {
-    marginTop: spacing.md,
-    fontSize: 20,
-    fontWeight: "700",
+  loadingTitle: {
+    marginTop: spacing.lg,
     color: colors.text,
+    fontSize: 18,
+    fontWeight: "700",
   },
 
-  emptyText: {
+  loadingText: {
     marginTop: 6,
     color: colors.textSecondary,
-    textAlign: "center",
+    fontSize: 14,
+  },
+
+  stateIcon: {
+    width: 68,
+    height: 68,
+    borderRadius: radius.xl,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.lg,
+  },
+
+  stateIconDanger: {
+    width: 68,
+    height: 68,
+    borderRadius: radius.xl,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.lg,
+  },
+
+  retryButton: {
+    marginTop: spacing.lg,
+    height: 44,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+  },
+
+  retryButtonText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: "700",
   },
 });

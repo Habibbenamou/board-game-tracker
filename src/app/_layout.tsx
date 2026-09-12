@@ -1,4 +1,9 @@
-import { Redirect, Stack } from "expo-router";
+import {
+  DarkTheme,
+  Redirect,
+  Stack,
+  ThemeProvider,
+} from "expo-router";
 
 import {
   AuthProvider,
@@ -110,7 +115,9 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <GroupProvider>
-        <AppNavigator />
+        <ThemeProvider value={DarkTheme}>
+          <AppNavigator />
+        </ThemeProvider>
       </GroupProvider>
     </AuthProvider>
   );

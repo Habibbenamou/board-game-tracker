@@ -1,48 +1,61 @@
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 
 import {
-    router,
-    useLocalSearchParams,
+  router,
+  useLocalSearchParams,
 } from "expo-router";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
+
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import Ionicons from "@expo/vector-icons/Ionicons";
+
+import Animated, {
+  FadeInUp,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
+
 import {
-    deleteGameSession,
-    getGameSessionById,
-    type GameSession,
+  deleteGameSession,
+  getGameSessionById,
+  type GameSession,
 } from "../services/gameSessionService";
 
 import {
-    deleteSessionPlayers,
-    getSessionPlayers,
-    type SessionPlayer,
+  deleteSessionPlayers,
+  type SessionPlayer,
 } from "../services/sessionPlayerService";
 
 import {
-    getGameById,
-    type Game,
+  getGameById,
+  type Game,
 } from "../services/gameService";
 
 import {
-    getPlayers,
-    type Player,
+  getPlayers,
+  type Player,
 } from "../services/playerService";
 
+import { supabase } from "../services/supabase";
+
 import {
-    colors,
-    radius,
-    spacing,
+  colors,
+  radius,
+  spacing,
 } from "../constants/theme";
 
 type SessionPlayerWithPlayer =
@@ -50,13 +63,299 @@ type SessionPlayerWithPlayer =
     player: Player | null;
   };
 
+const AnimatedPressable =
+  Animated.createAnimatedComponent(Pressable);
+
+type ResultCardProps = {
+  sessionPlayer: SessionPlayerWithPlayer;
+  index: number;
+};
+
+function getPlacementLabel(
+  placement: number | null
+): string {
+  if (placement === null) {
+    return "-";
+  }
+
+  if (placement === 1) {
+    return "1st";
+  }
+
+  if (placement === 2) {
+    return "2nd";
+  }
+
+  if (placement === 3) {
+    return "3rd";
+  }
+
+  return `${placement}th`;
+}
+
+function getPlacementIcon(
+  placement: number | null
+): keyof typeof Ionicons.glyphMap {
+  if (placement === 1) {
+    return "trophy";
+  }
+
+  if (placement === 2) {
+    return "medal-outline";
+  }
+
+  if (placement === 3) {
+    return "medal-outline";
+  }
+
+  return "podium-outline";
+}
+
+function ResultCard({
+  sessionPlayer,
+  index,
+}: ResultCardProps) {
+  const pressed = useSharedValue(1);
+
+  const animatedStyle =
+    useAnimatedStyle(() => ({
+      transform: [
+        {
+          scale: pressed.value,
+        },
+      ],
+      opacity: pressed.value,
+    }));
+
+  const winner =
+    sessionPlayer.is_winner;
+
+  const placement =
+    sessionPlayer.placement;
+
+  const playerName =
+    sessionPlayer.player?.name ??
+    "Unknown player";
+
+  const avatarLetter =
+    playerName
+      .charAt(0)
+      .toUpperCase() || "?";
+
+  function handlePressIn() {
+    pressed.value = withSpring(0.985, {
+      damping: 18,
+      stiffness: 300,
+    });
+  }
+
+  function handlePressOut() {
+    pressed.value = withSpring(1, {
+      damping: 18,
+      stiffness: 300,
+    });
+  }
+
+  return (
+    <Animated.View
+      entering={FadeInUp.duration(300).delay(
+        Math.min(index * 50, 250)
+      )}
+    >
+      <AnimatedPressable
+        style={[
+          styles.resultCard,
+          winner && styles.winnerCard,
+          animatedStyle,
+        ]}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+      >
+        <View
+          style={[
+            styles.placement,
+            winner && styles.winnerPlacement,
+          ]}
+        >
+          <Ionicons
+            name={getPlacementIcon(
+              placement
+            )}
+            size={winner ? 20 : 18}
+            color={
+              winner
+                ? colors.warning
+                : colors.textMuted
+            }
+          />
+
+          <Text
+            style={[
+              styles.placementText,
+              winner &&
+                styles.winnerPlacementText,
+            ]}
+          >
+            {getPlacementLabel(
+              placement
+            )}
+          </Text>
+        </View>
+
+        {sessionPlayer.player
+          ?.avatar_url ? (
+          <Image
+            source={{
+              uri: sessionPlayer.player
+                .avatar_url,
+            }}
+            style={styles.playerAvatar}
+          />
+        ) : (
+          <View
+            style={[
+              styles.avatarPlaceholder,
+              winner &&
+                styles.winnerAvatarPlaceholder,
+            ]}
+          >
+            <Text
+              style={[
+                styles.avatarText,
+                winner &&
+                  styles.winnerAvatarText,
+              ]}
+            >
+              {avatarLetter}
+            </Text>
+          </View>
+        )}
+
+        <View style={styles.playerInfo}>
+          <Text
+            style={styles.playerName}
+            numberOfLines={1}
+          >
+            {playerName}
+          </Text>
+
+          {winner ? (
+            <View style={styles.winnerBadge}>
+              <Ionicons
+                name="trophy"
+                size={11}
+                color={colors.warning}
+              />
+
+              <Text
+                style={styles.winnerText}
+              >
+                Winner
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
+        <View style={styles.scoreContainer}>
+          <Text style={styles.scoreLabel}>
+            Score
+          </Text>
+
+          <Text style={styles.score}>
+            {sessionPlayer.score ?? "-"}
+          </Text>
+        </View>
+      </AnimatedPressable>
+    </Animated.View>
+  );
+}
+
+function ActionButton({
+  icon,
+  label,
+  variant,
+  onPress,
+  disabled = false,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  variant: "primary" | "danger";
+  onPress: () => void;
+  disabled?: boolean;
+}) {
+  const pressed = useSharedValue(1);
+
+  const animatedStyle =
+    useAnimatedStyle(() => ({
+      transform: [
+        {
+          scale: pressed.value,
+        },
+      ],
+    }));
+
+  function handlePressIn() {
+    pressed.value = withSpring(0.97, {
+      damping: 18,
+      stiffness: 300,
+    });
+  }
+
+  function handlePressOut() {
+    pressed.value = withSpring(1, {
+      damping: 18,
+      stiffness: 300,
+    });
+  }
+
+  return (
+    <AnimatedPressable
+      style={[
+        styles.actionButton,
+        variant === "primary"
+          ? styles.editButton
+          : styles.deleteButton,
+        disabled &&
+          styles.actionButtonDisabled,
+        animatedStyle,
+      ]}
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      disabled={disabled}
+    >
+      <Ionicons
+        name={icon}
+        size={19}
+        color={
+          variant === "primary"
+            ? colors.white
+            : colors.danger
+        }
+      />
+
+      <Text
+        style={[
+          styles.actionButtonText,
+          variant === "primary"
+            ? styles.editButtonText
+            : styles.deleteButtonText,
+        ]}
+      >
+        {label}
+      </Text>
+    </AnimatedPressable>
+  );
+}
+
 export default function SessionDetailsScreen() {
   const { id } =
     useLocalSearchParams<{
       id: string;
     }>();
-  
-  const insets = useSafeAreaInsets();
+
+  const insets =
+    useSafeAreaInsets();
 
   const [session, setSession] =
     useState<GameSession | null>(null);
@@ -64,8 +363,12 @@ export default function SessionDetailsScreen() {
   const [game, setGame] =
     useState<Game | null>(null);
 
-  const [sessionPlayers, setSessionPlayers] =
-    useState<SessionPlayerWithPlayer[]>([]);
+  const [
+    sessionPlayers,
+    setSessionPlayers,
+  ] = useState<
+    SessionPlayerWithPlayer[]
+  >([]);
 
   const [loading, setLoading] =
     useState(true);
@@ -83,23 +386,64 @@ export default function SessionDetailsScreen() {
     try {
       setLoading(true);
 
+      // console.log(
+      //   "Loading session details:",
+      //   id
+      // );
+
       const sessionData =
         await getGameSessionById(id);
 
+      // console.log(
+      //   "SESSION DATA:",
+      //   sessionData
+      // );
+
+      /*
+       * Load the game and all players
+       * independently from the session.
+       */
       const [
         gameData,
-        sessionPlayersData,
         playersData,
       ] = await Promise.all([
         getGameById(
           sessionData.game_id
         ),
-        getSessionPlayers(id),
         getPlayers(),
       ]);
 
+      /*
+       * IMPORTANT:
+       * Fetch session_players directly here.
+       *
+       * This avoids relying on getSessionPlayers()
+       * potentially filtering incorrectly.
+       */
+      const {
+        data: sessionPlayersData,
+        error: sessionPlayersError,
+      } = await supabase
+        .from("session_players")
+        .select("*")
+        .eq("session_id", id);
+
+      // console.log(
+      //   "SESSION PLAYERS:",
+      //   sessionPlayersData
+      // );
+
+      // console.log(
+      //   "SESSION PLAYERS ERROR:",
+      //   sessionPlayersError
+      // );
+
+      if (sessionPlayersError) {
+        throw sessionPlayersError;
+      }
+
       const playersWithDetails =
-        sessionPlayersData.map(
+        (sessionPlayersData ?? []).map(
           (sessionPlayer) => ({
             ...sessionPlayer,
             player:
@@ -111,10 +455,15 @@ export default function SessionDetailsScreen() {
           })
         );
 
+      // console.log(
+      //   "PLAYERS WITH DETAILS:",
+      //   playersWithDetails
+      // );
+
       setSession(sessionData);
       setGame(gameData);
       setSessionPlayers(
-        playersWithDetails
+        playersWithDetails as SessionPlayerWithPlayer[]
       );
     } catch (error) {
       console.error(
@@ -148,46 +497,6 @@ export default function SessionDetailsScreen() {
     });
   }
 
-  function getPlacementLabel(
-    placement: number | null
-  ): string {
-    if (placement === null) {
-      return "-";
-    }
-
-    if (placement === 1) {
-      return "1st";
-    }
-
-    if (placement === 2) {
-      return "2nd";
-    }
-
-    if (placement === 3) {
-      return "3rd";
-    }
-
-    return `${placement}th`;
-  }
-
-  function getPlacementEmoji(
-    placement: number | null
-  ): string {
-    if (placement === 1) {
-      return "🥇";
-    }
-
-    if (placement === 2) {
-      return "🥈";
-    }
-
-    if (placement === 3) {
-      return "🥉";
-    }
-
-    return "";
-  }
-
   function handleEdit() {
     router.push({
       pathname: "/edit-session",
@@ -209,8 +518,7 @@ export default function SessionDetailsScreen() {
         {
           text: "Delete",
           style: "destructive",
-          onPress:
-            confirmDelete,
+          onPress: confirmDelete,
         },
       ]
     );
@@ -220,10 +528,6 @@ export default function SessionDetailsScreen() {
     try {
       setDeleting(true);
 
-      /*
-       * Delete session players first
-       * because they reference the session.
-       */
       await deleteSessionPlayers(id);
 
       await deleteGameSession(id);
@@ -258,13 +562,20 @@ export default function SessionDetailsScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator
-          size="large"
-          color={colors.primary}
-        />
+        <View style={styles.loadingIcon}>
+          <Ionicons
+            name="time-outline"
+            size={30}
+            color={colors.primaryLight}
+          />
+        </View>
+
+        <Text style={styles.loadingTitle}>
+          Loading session
+        </Text>
 
         <Text style={styles.loadingText}>
-          Loading session...
+          Getting the game results...
         </Text>
       </View>
     );
@@ -273,35 +584,73 @@ export default function SessionDetailsScreen() {
   if (!session) {
     return (
       <View style={styles.center}>
+        <View style={styles.stateIcon}>
+          <Ionicons
+            name="alert-circle-outline"
+            size={32}
+            color={colors.primaryLight}
+          />
+        </View>
+
         <Text style={styles.emptyTitle}>
           Session not found
         </Text>
 
-        <TouchableOpacity
-          style={styles.backButton}
+        <Text style={styles.emptyText}>
+          This game session may have been
+          deleted or is no longer available.
+        </Text>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.backButton,
+            pressed &&
+              styles.buttonPressed,
+          ]}
           onPress={() => router.back()}
         >
+          <Ionicons
+            name="arrow-back"
+            size={18}
+            color={colors.white}
+          />
+
           <Text
             style={styles.backButtonText}
           >
             Go Back
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     );
   }
+
+  const winnerCount =
+    sessionPlayers.filter(
+      (player) => player.is_winner
+    ).length;
 
   return (
     <View style={styles.container}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={
-          styles.content
-        }
+        contentContainerStyle={[
+          styles.content,
+          {
+            paddingBottom:
+              Math.max(
+                insets.bottom,
+                spacing.lg
+              ) +
+              spacing.xl,
+          },
+        ]}
       >
-
-        {/* Game */}
-        <View style={styles.gameHeader}>
+        {/* Game Header */}
+        <Animated.View
+          entering={FadeInUp.duration(300)}
+          style={styles.gameHeader}
+        >
           {game?.image_url ? (
             <Image
               source={{
@@ -313,15 +662,29 @@ export default function SessionDetailsScreen() {
             <View
               style={styles.gamePlaceholder}
             >
-              <Text
-                style={styles.placeholderEmoji}
-              >
-                🎲
-              </Text>
+              <Ionicons
+                name="dice-outline"
+                size={40}
+                color={colors.primaryLight}
+              />
             </View>
           )}
 
           <View style={styles.gameInfo}>
+            <View style={styles.recordedBadge}>
+              <Ionicons
+                name="checkmark-circle"
+                size={13}
+                color={colors.success}
+              />
+
+              <Text
+                style={styles.recordedBadgeText}
+              >
+                Session recorded
+              </Text>
+            </View>
+
             <Text
               style={styles.gameName}
               numberOfLines={2}
@@ -331,22 +694,29 @@ export default function SessionDetailsScreen() {
             </Text>
 
             {game?.category ? (
-              <Text
-                style={styles.category}
-              >
+              <Text style={styles.category}>
                 {game.category}
               </Text>
             ) : null}
           </View>
-        </View>
+        </Animated.View>
 
         {/* Date */}
-        <View style={styles.dateCard}>
-          <Text style={styles.dateIcon}>
-            📅
-          </Text>
+        <Animated.View
+          entering={FadeInUp.duration(300).delay(
+            60
+          )}
+          style={styles.dateCard}
+        >
+          <View style={styles.dateIcon}>
+            <Ionicons
+              name="calendar-outline"
+              size={22}
+              color={colors.primaryLight}
+            />
+          </View>
 
-          <View>
+          <View style={styles.dateInfo}>
             <Text style={styles.cardLabel}>
               Played
             </Text>
@@ -357,16 +727,54 @@ export default function SessionDetailsScreen() {
               )}
             </Text>
           </View>
-        </View>
+        </Animated.View>
 
         {/* Results */}
-        <Text style={styles.sectionTitle}>
-          Results
-        </Text>
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={styles.sectionTitle}>
+              Results
+            </Text>
+
+            <Text style={styles.sectionSubtitle}>
+              {sessionPlayers.length}{" "}
+              {sessionPlayers.length === 1
+                ? "player"
+                : "players"}
+              {winnerCount > 0
+                ? ` • ${winnerCount} winner`
+                : ""}
+            </Text>
+          </View>
+
+          <View style={styles.sectionIcon}>
+            <Ionicons
+              name="trophy-outline"
+              size={19}
+              color={colors.primaryLight}
+            />
+          </View>
+        </View>
 
         {sessionPlayers.length ===
         0 ? (
           <View style={styles.emptyCard}>
+            <View
+              style={styles.emptyCardIcon}
+            >
+              <Ionicons
+                name="people-outline"
+                size={25}
+                color={colors.textMuted}
+              />
+            </View>
+
+            <Text
+              style={styles.emptyCardTitle}
+            >
+              No results recorded
+            </Text>
+
             <Text
               style={styles.emptyCardText}
             >
@@ -377,202 +785,112 @@ export default function SessionDetailsScreen() {
         ) : (
           <View style={styles.results}>
             {sessionPlayers.map(
-              (sessionPlayer) => {
-                const placement =
-                  sessionPlayer.placement;
-
-                const winner =
-                  sessionPlayer.is_winner;
-
-                return (
-                  <View
-                    key={sessionPlayer.id}
-                    style={[
-                      styles.resultCard,
-                      winner &&
-                        styles.winnerCard,
-                    ]}
-                  >
-                    <View
-                      style={
-                        styles.placement
-                      }
-                    >
-                      <Text
-                        style={
-                          styles.placementEmoji
-                        }
-                      >
-                        {getPlacementEmoji(
-                          placement
-                        )}
-                      </Text>
-
-                      <Text
-                        style={
-                          styles.placementText
-                        }
-                      >
-                        {getPlacementLabel(
-                          placement
-                        )}
-                      </Text>
-                    </View>
-
-                    {sessionPlayer
-                      .player
-                      ?.avatar_url ? (
-                      <Image
-                        source={{
-                          uri: sessionPlayer
-                            .player
-                            .avatar_url,
-                        }}
-                        style={
-                          styles.playerAvatar
-                        }
-                      />
-                    ) : (
-                      <View
-                        style={
-                          styles.avatarPlaceholder
-                        }
-                      >
-                        <Text
-                          style={
-                            styles.avatarText
-                          }
-                        >
-                          {sessionPlayer.player?.name
-                            ?.charAt(0)
-                            .toUpperCase() ??
-                            "?"}
-                        </Text>
-                      </View>
-                    )}
-
-                    <View
-                      style={
-                        styles.playerInfo
-                      }
-                    >
-                      <Text
-                        style={
-                          styles.playerName
-                        }
-                        numberOfLines={1}
-                      >
-                        {sessionPlayer
-                          .player?.name ??
-                          "Unknown player"}
-                      </Text>
-
-                      {winner ? (
-                        <Text
-                          style={
-                            styles.winnerText
-                          }
-                        >
-                          Winner
-                        </Text>
-                      ) : null}
-                    </View>
-
-                    <View
-                      style={
-                        styles.scoreContainer
-                      }
-                    >
-                      <Text
-                        style={
-                          styles.scoreLabel
-                        }
-                      >
-                        Score
-                      </Text>
-
-                      <Text
-                        style={
-                          styles.score
-                        }
-                      >
-                        {sessionPlayer
-                          .score ??
-                          "-"}
-                      </Text>
-                    </View>
-                  </View>
-                );
-              }
+              (sessionPlayer, index) => (
+                <ResultCard
+                  key={sessionPlayer.id}
+                  sessionPlayer={
+                    sessionPlayer
+                  }
+                  index={index}
+                />
+              )
             )}
           </View>
         )}
 
         {/* Notes */}
         {session.notes ? (
-          <>
-            <Text
-              style={styles.sectionTitle}
+          <Animated.View
+            entering={FadeInUp.duration(
+              300
+            ).delay(120)}
+          >
+            <View
+              style={styles.sectionHeader}
             >
-              Notes
-            </Text>
+              <View>
+                <Text
+                  style={styles.sectionTitle}
+                >
+                  Notes
+                </Text>
+
+                <Text
+                  style={styles.sectionSubtitle}
+                >
+                  Session details
+                </Text>
+              </View>
+
+              <View style={styles.sectionIcon}>
+                <Ionicons
+                  name="document-text-outline"
+                  size={19}
+                  color={
+                    colors.primaryLight
+                  }
+                />
+              </View>
+            </View>
 
             <View style={styles.notesCard}>
-              <Text style={styles.notesText}>
+              <Ionicons
+                name="chatbox-ellipses-outline"
+                size={20}
+                color={colors.textMuted}
+              />
+
+              <Text
+                style={styles.notesText}
+              >
                 {session.notes}
               </Text>
             </View>
-          </>
+          </Animated.View>
         ) : null}
 
-        {/* Delete */}
-              <View
-                      style={[
-                        styles.deleteSection,
-                        {
-                          paddingBottom:
-                            Math.max(
-                              insets.bottom,
-                              spacing.lg
-                            ) + spacing.md,
-                        },
-                      ]}
-              > 
-
-        <TouchableOpacity
-            style={styles.editButton}
-            onPress={handleEdit}
-            activeOpacity={0.8}
-          >
-
-                            <Text
-                              style={
-                                styles.editButtonTitle
-                              }
-                            >
-                              Edit Game
-                            </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
+        {/* Actions */}
+        <Animated.View
+          entering={FadeInUp.duration(300).delay(
+            160
+          )}
           style={[
-            styles.deleteButton,
-            deleting &&
-              styles.deleteButtonDisabled,
+            styles.actionSection,
+            {
+              paddingBottom:
+                Math.max(
+                  insets.bottom,
+                  spacing.lg
+                ),
+            },
           ]}
-          onPress={handleDelete}
-          disabled={deleting}
-          activeOpacity={0.8}
         >
           <Text
-            style={styles.deleteButtonText}
+            style={styles.actionSectionTitle}
           >
-            {deleting
-              ? "Deleting..."
-              : "Delete Session"}
+            Session Actions
           </Text>
-        </TouchableOpacity>
-        </View>
+
+          <ActionButton
+            icon="create-outline"
+            label="Edit Session"
+            variant="primary"
+            onPress={handleEdit}
+            disabled={deleting}
+          />
+
+          <ActionButton
+            icon="trash-outline"
+            label={
+              deleting
+                ? "Deleting..."
+                : "Delete Session"
+            }
+            variant="danger"
+            onPress={handleDelete}
+            disabled={deleting}
+          />
+        </Animated.View>
       </ScrollView>
     </View>
   );
@@ -585,9 +903,8 @@ const styles = StyleSheet.create({
   },
 
   content: {
-    padding: spacing.lg,
-    paddingTop: 55,
-    paddingBottom: 40,
+    paddingHorizontal: spacing.lg,
+    paddingTop: 58,
   },
 
   center: {
@@ -595,31 +912,87 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     alignItems: "center",
     justifyContent: "center",
-    padding: spacing.xl,
+    paddingHorizontal: spacing.xl,
+  },
+
+  loadingIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: radius.xl,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  loadingTitle: {
+    marginTop: spacing.lg,
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: "700",
   },
 
   loadingText: {
-    marginTop: spacing.md,
+    marginTop: 6,
     color: colors.textSecondary,
+    fontSize: 14,
   },
 
-  header: {
+  stateIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: radius.xl,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  emptyTitle: {
+    marginTop: spacing.lg,
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: "800",
+    color: colors.text,
+    textAlign: "center",
+  },
+
+  emptyText: {
+    marginTop: spacing.sm,
+    maxWidth: 320,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.textSecondary,
+    textAlign: "center",
+  },
+
+  backButton: {
+    marginTop: spacing.xl,
+    height: 46,
+    paddingHorizontal: spacing.xl,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: spacing.xl,
+    justifyContent: "center",
+    gap: spacing.sm,
   },
 
-  backText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.primary,
-  },
-
-  editText: {
-    fontSize: 16,
+  backButtonText: {
+    color: colors.white,
+    fontSize: 14,
     fontWeight: "700",
-    color: colors.primary,
+  },
+
+  buttonPressed: {
+    opacity: 0.8,
+    transform: [
+      {
+        scale: 0.98,
+      },
+    ],
   },
 
   gameHeader: {
@@ -628,31 +1001,57 @@ const styles = StyleSheet.create({
   },
 
   gameImage: {
-    width: 90,
-    height: 90,
+    width: 94,
+    height: 94,
     borderRadius: radius.lg,
+    backgroundColor:
+      colors.surfaceHighlight,
   },
 
   gamePlaceholder: {
-    width: 90,
-    height: 90,
+    width: 94,
+    height: 94,
     borderRadius: radius.lg,
-    backgroundColor: colors.surface,
+    backgroundColor:
+      colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
 
-  placeholderEmoji: {
-    fontSize: 40,
-  },
-
   gameInfo: {
     flex: 1,
-    marginLeft: spacing.md,
+    minWidth: 0,
+    marginLeft: spacing.lg,
+  },
+
+  recordedBadge: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginBottom: 7,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: radius.full,
+    backgroundColor:
+      "rgba(34, 197, 94, 0.10)",
+    borderWidth: 1,
+    borderColor:
+      "rgba(34, 197, 94, 0.25)",
+  },
+
+  recordedBadgeText: {
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: "700",
+    color: colors.success,
   },
 
   gameName: {
     fontSize: 25,
+    lineHeight: 30,
     fontWeight: "800",
     color: colors.text,
   },
@@ -661,42 +1060,87 @@ const styles = StyleSheet.create({
     marginTop: 5,
     color: colors.textSecondary,
     fontSize: 14,
+    fontWeight: "500",
   },
 
   dateCard: {
-    flexDirection: "row",
-    alignItems: "center",
     marginTop: spacing.xl,
     padding: spacing.md,
     borderRadius: radius.lg,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
+    flexDirection: "row",
+    alignItems: "center",
   },
 
   dateIcon: {
-    fontSize: 25,
-    marginRight: spacing.md,
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor:
+      colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  dateInfo: {
+    flex: 1,
+    marginLeft: spacing.md,
   },
 
   cardLabel: {
-    fontSize: 12,
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: "600",
     color: colors.textMuted,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
 
   dateText: {
     marginTop: 3,
     fontSize: 14,
+    lineHeight: 20,
     fontWeight: "600",
     color: colors.text,
   },
 
-  sectionTitle: {
+  sectionHeader: {
     marginTop: spacing.xl,
     marginBottom: spacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  sectionTitle: {
     fontSize: 20,
+    lineHeight: 26,
     fontWeight: "800",
     color: colors.text,
+  },
+
+  sectionSubtitle: {
+    marginTop: 3,
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "500",
+    color: colors.textMuted,
+  },
+
+  sectionIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.md,
+    backgroundColor:
+      colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   results: {
@@ -704,6 +1148,7 @@ const styles = StyleSheet.create({
   },
 
   resultCard: {
+    minHeight: 72,
     flexDirection: "row",
     alignItems: "center",
     padding: spacing.sm,
@@ -714,78 +1159,117 @@ const styles = StyleSheet.create({
   },
 
   winnerCard: {
-    borderColor: colors.primary,
+    backgroundColor:
+      colors.surfaceElevated,
+    borderColor:
+      "rgba(245, 158, 11, 0.55)",
   },
 
   placement: {
     width: 48,
     alignItems: "center",
+    justifyContent: "center",
   },
 
-  placementEmoji: {
-    fontSize: 20,
-    height: 24,
+  winnerPlacement: {
+    width: 52,
   },
 
   placementText: {
-    marginTop: 2,
-    fontSize: 12,
+    marginTop: 3,
+    fontSize: 11,
+    lineHeight: 15,
     fontWeight: "700",
-    color: colors.textSecondary,
+    color: colors.textMuted,
+  },
+
+  winnerPlacementText: {
+    color: colors.warning,
   },
 
   playerAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor:
+      colors.surfaceHighlight,
   },
 
   avatarPlaceholder: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.background,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor:
+      colors.surfaceHighlight,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
 
+  winnerAvatarPlaceholder: {
+    borderColor:
+      "rgba(245, 158, 11, 0.45)",
+    backgroundColor:
+      "rgba(245, 158, 11, 0.10)",
+  },
+
   avatarText: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "700",
-    color: colors.primary,
+    color: colors.primaryLight,
+  },
+
+  winnerAvatarText: {
+    color: colors.warning,
   },
 
   playerInfo: {
     flex: 1,
+    minWidth: 0,
     marginLeft: spacing.md,
   },
 
   playerName: {
     fontSize: 15,
+    lineHeight: 20,
     fontWeight: "700",
     color: colors.text,
   },
 
+  winnerBadge: {
+    alignSelf: "flex-start",
+    marginTop: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+
   winnerText: {
-    marginTop: 3,
-    fontSize: 12,
+    fontSize: 11,
+    lineHeight: 15,
     fontWeight: "700",
-    color: colors.primary,
+    color: colors.warning,
   },
 
   scoreContainer: {
+    minWidth: 48,
     alignItems: "flex-end",
     marginLeft: spacing.sm,
   },
 
   scoreLabel: {
-    fontSize: 11,
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: "600",
     color: colors.textMuted,
+    textTransform: "uppercase",
   },
 
   score: {
     marginTop: 2,
     fontSize: 19,
+    lineHeight: 23,
     fontWeight: "800",
     color: colors.text,
   },
@@ -796,11 +1280,33 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
+    alignItems: "center",
+  },
+
+  emptyCardIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.md,
+    backgroundColor:
+      colors.surfaceElevated,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.sm,
+  },
+
+  emptyCardTitle: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: "700",
+    color: colors.text,
   },
 
   emptyCardText: {
-    textAlign: "center",
+    marginTop: 5,
+    fontSize: 13,
+    lineHeight: 19,
     color: colors.textSecondary,
+    textAlign: "center",
   },
 
   notesCard: {
@@ -809,73 +1315,69 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
+    flexDirection: "row",
+    alignItems: "flex-start",
   },
 
   notesText: {
+    flex: 1,
+    marginLeft: spacing.sm,
     lineHeight: 21,
     color: colors.text,
     fontSize: 14,
   },
 
-  backButton: {
-    marginTop: spacing.lg,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.primary,
+  actionSection: {
+    marginTop: spacing.xxl,
+    paddingTop: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
 
-  backButtonText: {
-    color: "#FFFFFF",
+  actionSectionTitle: {
+    marginBottom: spacing.sm,
+    fontSize: 13,
+    lineHeight: 18,
     fontWeight: "700",
+    color: colors.textMuted,
   },
 
-  emptyTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: colors.text,
+  actionButton: {
+    height: 50,
+    borderRadius: radius.md,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
   },
 
   editButton: {
-    marginTop: spacing.md,
-    height: 50,
-    borderRadius: radius.md,
-    borderWidth: 1,
+    marginTop: spacing.sm,
     backgroundColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  editButtonTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#FFFFFF",
-  },
-
-  deleteSection: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.lg,
-    backgroundColor: colors.background,
   },
 
   deleteButton: {
-    marginTop: spacing.md,
-    height: 50,
-    borderRadius: radius.md,
+    marginTop: spacing.sm,
     borderWidth: 1,
     borderColor: colors.danger,
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor:
+      "rgba(239, 68, 68, 0.05)",
   },
 
-  deleteButtonDisabled: {
+  actionButtonDisabled: {
     opacity: 0.5,
+  },
+
+  actionButtonText: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+
+  editButtonText: {
+    color: colors.white,
   },
 
   deleteButtonText: {
     color: colors.danger,
-    fontSize: 15,
-    fontWeight: "700",
   },
 });
