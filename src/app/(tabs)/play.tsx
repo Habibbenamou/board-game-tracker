@@ -182,6 +182,32 @@ function AnimatedGameCard({
               Board game
             </Text>
           )}
+
+          {(game.min_players != null ||
+            game.max_players != null) && (
+            <View
+              style={styles.gamePlayersInfo}
+            >
+              <Ionicons
+                name="people-outline"
+                size={12}
+                color={
+                  colors.textMuted
+                }
+              />
+
+              <Text
+                style={
+                  styles.gamePlayersText
+                }
+              >
+                {formatPlayerRange(
+                  game.min_players,
+                  game.max_players
+                )}
+              </Text>
+            </View>
+          )}
         </View>
 
         <View
@@ -204,17 +230,19 @@ function AnimatedGameCard({
 
 /*
  * --------------------------------------------------
- * Animated Player Card
+ * Player Card
  * --------------------------------------------------
  */
 
 function AnimatedPlayerCard({
   player,
   selected,
+  disabled,
   onPress,
 }: {
   player: Player;
   selected: boolean;
+  disabled: boolean;
   onPress: () => void;
 }) {
   const scale =
@@ -275,6 +303,10 @@ function AnimatedPlayerCard({
     }));
 
   function handlePressIn() {
+    if (disabled) {
+      return;
+    }
+
     scale.value = withSpring(
       0.985,
       {
@@ -285,6 +317,10 @@ function AnimatedPlayerCard({
   }
 
   function handlePressOut() {
+    if (disabled) {
+      return;
+    }
+
     scale.value = withSpring(
       1,
       {
@@ -306,7 +342,10 @@ function AnimatedPlayerCard({
           styles.playerCard,
           selected &&
             styles.playerCardSelected,
+          disabled &&
+            styles.playerCardDisabled,
         ]}
+        disabled={disabled}
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
@@ -344,19 +383,27 @@ function AnimatedPlayerCard({
           }
         >
           <Text
-            style={styles.playerName}
+            style={[
+              styles.playerName,
+              disabled &&
+                styles.playerNameDisabled,
+            ]}
             numberOfLines={1}
           >
             {player.name}
           </Text>
 
           <Text
-            style={
-              styles.playerStatus
-            }
+            style={[
+              styles.playerStatus,
+              disabled &&
+                styles.playerStatusDisabled,
+            ]}
           >
             {selected
               ? "Playing"
+              : disabled
+              ? "Maximum reached"
               : "Tap to select"}
           </Text>
         </View>
@@ -366,6 +413,9 @@ function AnimatedPlayerCard({
             styles.checkbox,
             selected &&
               styles.checkboxSelected,
+            !selected &&
+              disabled &&
+              styles.checkboxDisabled,
             checkAnimatedStyle,
           ]}
         >
@@ -381,6 +431,44 @@ function AnimatedPlayerCard({
     </Animated.View>
   );
 }
+
+/*
+ * --------------------------------------------------
+ * Helpers
+ * --------------------------------------------------
+ */
+
+function formatPlayerRange(
+  minPlayers: number | null | undefined,
+  maxPlayers: number | null | undefined
+): string {
+  if (
+    minPlayers != null &&
+    maxPlayers != null
+  ) {
+    if (minPlayers === maxPlayers) {
+      return `${minPlayers} players`;
+    }
+
+    return `${minPlayers}–${maxPlayers} players`;
+  }
+
+  if (minPlayers != null) {
+    return `${minPlayers}+ players`;
+  }
+
+  if (maxPlayers != null) {
+    return `Up to ${maxPlayers} players`;
+  }
+
+  return "";
+}
+
+/*
+ * --------------------------------------------------
+ * Play Screen
+ * --------------------------------------------------
+ */
 
 export default function PlayScreen() {
   const [games, setGames] =
@@ -468,8 +556,18 @@ export default function PlayScreen() {
   function togglePlayer(
     playerId: string
   ) {
+    if (!selectedGame) {
+      return;
+    }
+
     setSelectedPlayers(
       (current) => {
+        /*
+         * Remove player if already selected.
+         *
+         * This must always be allowed, even when
+         * the maximum number of players is reached.
+         */
         if (
           current.includes(playerId)
         ) {
@@ -479,6 +577,21 @@ export default function PlayScreen() {
           );
         }
 
+        /*
+         * Do not allow a new player to be added
+         * once the game's maximum is reached.
+         */
+        const maxPlayers =
+          selectedGame.max_players;
+
+        if (
+          maxPlayers != null &&
+          current.length >=
+            maxPlayers
+        ) {
+          return current;
+        }
+
         return [
           ...current,
           playerId,
@@ -486,6 +599,47 @@ export default function PlayScreen() {
       }
     );
   }
+
+  /*
+   * --------------------------------------------------
+   * Player limits
+   * --------------------------------------------------
+   */
+  
+  const minPlayers =
+    selectedGame?.min_players ??
+    1;
+
+  const maxPlayers =
+    selectedGame?.max_players ??
+    players.length;
+
+  const selectedCount =
+    selectedPlayers.length;
+
+  const minimumReached =
+    selectedCount >=
+    minPlayers;
+
+  const maximumReached =
+    selectedCount >=
+    maxPlayers;
+
+  const enoughPlayersAvailable =
+    players.length >=
+    minPlayers;
+
+  const canContinue =
+    minimumReached &&
+    selectedCount <=
+      maxPlayers &&
+    enoughPlayersAvailable;
+
+  const playerRangeText =
+    formatPlayerRange(
+      selectedGame?.min_players,
+      selectedGame?.max_players
+    );
 
   if (loading) {
     return (
@@ -566,7 +720,11 @@ export default function PlayScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.screenHeader}>
-          <View>
+          <View
+            style={
+              styles.headerContent
+            }
+          >
             <Text
               style={
                 styles.stepLabel
@@ -586,7 +744,8 @@ export default function PlayScreen() {
                 styles.subtitle
               }
             >
-              Select everyone who participated.
+              Select {playerRangeText || "the players"}{" "}
+              who participated.
             </Text>
           </View>
 
@@ -669,6 +828,30 @@ export default function PlayScreen() {
                 {selectedGame.category}
               </Text>
             ) : null}
+
+            {playerRangeText ? (
+              <View
+                style={
+                  styles.selectedGamePlayers
+                }
+              >
+                <Ionicons
+                  name="people-outline"
+                  size={11}
+                  color={
+                    colors.textMuted
+                  }
+                />
+
+                <Text
+                  style={
+                    styles.selectedGamePlayersText
+                  }
+                >
+                  {playerRangeText}
+                </Text>
+              </View>
+            ) : null}
           </View>
 
           <Pressable
@@ -704,36 +887,116 @@ export default function PlayScreen() {
             styles.playersHeader
           }
         >
-          <Text
-            style={
-              styles.sectionTitle
-            }
-          >
-            Players
-          </Text>
+          <View>
+            <Text
+              style={
+                styles.sectionTitle
+              }
+            >
+              Players
+            </Text>
+
+            <Text
+              style={
+                styles.selectionHint
+              }
+            >
+              {maximumReached
+                ? "Maximum players reached"
+                : `Select ${minPlayers}${
+                    minPlayers !==
+                    maxPlayers
+                      ? `–${maxPlayers}`
+                      : ""
+                  }`}
+            </Text>
+          </View>
 
           <View
-            style={
-              styles.selectedBadge
-            }
+            style={[
+              styles.selectedBadge,
+              maximumReached &&
+                styles.selectedBadgeMax,
+              minimumReached &&
+                !maximumReached &&
+                styles.selectedBadgeValid,
+            ]}
           >
             <Ionicons
-              name="checkmark-circle"
+              name={
+                minimumReached
+                  ? "checkmark-circle"
+                  : "people-outline"
+              }
               size={13}
               color={
-                colors.primaryLight
+                minimumReached
+                  ? colors.success
+                  : colors.primaryLight
               }
             />
 
             <Text
-              style={
-                styles.selectedBadgeText
-              }
+              style={[
+                styles.selectedBadgeText,
+                minimumReached &&
+                  styles.selectedBadgeTextValid,
+              ]}
             >
-              {selectedPlayers.length}
+              {selectedCount}
+              {maxPlayers !==
+                Infinity
+                ? ` / ${maxPlayers}`
+                : ""}
             </Text>
           </View>
         </View>
+
+        {!enoughPlayersAvailable ? (
+          <View
+            style={
+              styles.warningBanner
+            }
+          >
+            <View
+              style={
+                styles.warningIcon
+              }
+            >
+              <Ionicons
+                name="alert-circle-outline"
+                size={18}
+                color={
+                  colors.warning
+                }
+              />
+            </View>
+
+            <View
+              style={
+                styles.warningContent
+              }
+            >
+              <Text
+                style={
+                  styles.warningTitle
+                }
+              >
+                Not enough players
+              </Text>
+
+              <Text
+                style={
+                  styles.warningText
+                }
+              >
+                {selectedGame.name} requires at
+                least {minPlayers} players, but
+                this group only has {players.length}.
+              </Text>
+            </View>
+          </View>
+        ) : null}
 
         {players.length === 0 ? (
           <View
@@ -790,10 +1053,20 @@ export default function PlayScreen() {
                   item.id
                 );
 
+              /*
+               * A selected player is never disabled.
+               * This allows the user to remove a player
+               * after reaching the maximum.
+               */
+              const disabled =
+                !selected &&
+                maximumReached;
+
               return (
                 <AnimatedPlayerCard
                   player={item}
                   selected={selected}
+                  disabled={disabled}
                   onPress={() =>
                     togglePlayer(
                       item.id
@@ -819,21 +1092,28 @@ export default function PlayScreen() {
               }
             >
               <Ionicons
-                name="people"
+                name={
+                  minimumReached
+                    ? "checkmark-circle"
+                    : "people-outline"
+                }
                 size={15}
                 color={
-                  colors.textSecondary
+                  minimumReached
+                    ? colors.success
+                    : colors.textSecondary
                 }
               />
 
               <Text
-                style={
-                  styles.selectedCount
-                }
+                style={[
+                  styles.selectedCount,
+                  minimumReached &&
+                    styles.selectedCountValid,
+                ]}
               >
-                {selectedPlayers.length}{" "}
-                {selectedPlayers.length ===
-                1
+                {selectedCount}{" "}
+                {selectedCount === 1
                   ? "player"
                   : "players"}{" "}
                 selected
@@ -843,15 +1123,17 @@ export default function PlayScreen() {
             <Pressable
               style={[
                 styles.continueButton,
-                selectedPlayers.length ===
-                  0 &&
+                !canContinue &&
                   styles.continueButtonDisabled,
               ]}
-              disabled={
-                selectedPlayers.length ===
-                0
-              }
+              disabled={!canContinue}
               onPress={() => {
+                if (
+                  !selectedGame
+                ) {
+                  return;
+                }
+
                 router.push({
                   pathname:
                     "/record-session",
@@ -871,7 +1153,9 @@ export default function PlayScreen() {
                   styles.continueButtonText
                 }
               >
-                Continue
+                {minimumReached
+                  ? "Continue"
+                  : `Select at least ${minPlayers}`}
               </Text>
 
               <Ionicons
@@ -897,7 +1181,11 @@ export default function PlayScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.screenHeader}>
-        <View style={{ flex: 1 }}>
+        <View
+          style={{
+            flex: 1,
+          }}
+        >
           <Text
             style={
               styles.stepLabel
@@ -1025,6 +1313,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
 
+  headerContent: {
+    flex: 1,
+    paddingRight: spacing.md,
+  },
+
   stepLabel: {
     marginBottom: 5,
     fontSize: 10,
@@ -1129,6 +1422,20 @@ const styles = StyleSheet.create({
       colors.textMuted,
   },
 
+  gamePlayersInfo: {
+    marginTop: 5,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+
+  gamePlayersText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color:
+      colors.textMuted,
+  },
+
   gameChevronContainer: {
     width: 32,
     height: 32,
@@ -1201,6 +1508,20 @@ const styles = StyleSheet.create({
       colors.textSecondary,
   },
 
+  selectedGamePlayers: {
+    marginTop: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+
+  selectedGamePlayersText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color:
+      colors.textMuted,
+  },
+
   changeButton: {
     minHeight: 34,
     paddingHorizontal: spacing.sm,
@@ -1237,11 +1558,18 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
 
+  selectionHint: {
+    marginTop: 2,
+    fontSize: 11,
+    color:
+      colors.textMuted,
+  },
+
   selectedBadge: {
-    minWidth: 30,
-    height: 28,
-    paddingHorizontal: 8,
-    borderRadius: 14,
+    minWidth: 44,
+    height: 30,
+    paddingHorizontal: 9,
+    borderRadius: 15,
     backgroundColor:
       "rgba(139, 92, 246, 0.10)",
     flexDirection: "row",
@@ -1250,11 +1578,67 @@ const styles = StyleSheet.create({
     gap: 4,
   },
 
+  selectedBadgeValid: {
+    backgroundColor:
+      "rgba(34, 197, 94, 0.10)",
+  },
+
+  selectedBadgeMax: {
+    backgroundColor:
+      "rgba(245, 158, 11, 0.10)",
+  },
+
   selectedBadgeText: {
     fontSize: 12,
     fontWeight: "800",
     color:
       colors.primaryLight,
+  },
+
+  selectedBadgeTextValid: {
+    color: colors.success,
+  },
+
+  warningBanner: {
+    marginBottom: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor:
+      "rgba(245, 158, 11, 0.08)",
+    borderWidth: 1,
+    borderColor:
+      "rgba(245, 158, 11, 0.20)",
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  warningIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    backgroundColor:
+      "rgba(245, 158, 11, 0.10)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  warningContent: {
+    flex: 1,
+    marginLeft: spacing.sm,
+  },
+
+  warningTitle: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: colors.warning,
+  },
+
+  warningText: {
+    marginTop: 2,
+    fontSize: 11,
+    lineHeight: 16,
+    color:
+      colors.textSecondary,
   },
 
   playerList: {
@@ -1283,6 +1667,10 @@ const styles = StyleSheet.create({
       colors.primary,
     backgroundColor:
       "rgba(139, 92, 246, 0.06)",
+  },
+
+  playerCardDisabled: {
+    opacity: 0.45,
   },
 
   playerAvatar: {
@@ -1319,11 +1707,19 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
 
+  playerNameDisabled: {
+    color: colors.textSecondary,
+  },
+
   playerStatus: {
     marginTop: 3,
     fontSize: 11,
     color:
       colors.textMuted,
+  },
+
+  playerStatusDisabled: {
+    color: colors.warning,
   },
 
   checkbox: {
@@ -1342,6 +1738,13 @@ const styles = StyleSheet.create({
       colors.primary,
     borderColor:
       colors.primary,
+  },
+
+  checkboxDisabled: {
+    borderColor:
+      colors.border,
+    backgroundColor:
+      colors.surfaceHighlight,
   },
 
   /*
@@ -1409,6 +1812,11 @@ const styles = StyleSheet.create({
     color:
       colors.textSecondary,
     fontSize: 12,
+  },
+
+  selectedCountValid: {
+    color: colors.success,
+    fontWeight: "600",
   },
 
   continueButton: {

@@ -409,7 +409,7 @@ const styles = StyleSheet.create({
     backgroundColor:
       colors.background,
     padding: spacing.lg,
-    paddingTop: 60,
+    paddingTop: 30,
   },
 
   center: {

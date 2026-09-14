@@ -10,6 +10,8 @@ import {
   View,
 } from "react-native";
 
+import { router } from "expo-router";
+
 import {
   useCallback,
   useEffect,
@@ -514,6 +516,9 @@ export default function HomeScreen() {
 
           <Pressable
             style={styles.sectionAction}
+            onPress={() => router.push({
+                          pathname: "/game-sessions",
+                        })}
           >
             <Text
               style={
@@ -600,6 +605,12 @@ export default function HomeScreen() {
                       pressed &&
                         styles.gameCardPressed,
                     ]}
+                    onPress={() => router.push({
+                          pathname: "/session-details",
+                          params: {
+                            id: session.id,
+                          },
+                        })}
                   >
                     {game?.image_url ? (
                       <Image
@@ -1766,7 +1777,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 30,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
-    paddingBottom: spacing.xl,
+    paddingBottom: spacing.xxl,
     borderWidth: 1,
     borderColor:
       colors.border,

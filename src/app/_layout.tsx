@@ -38,64 +38,53 @@ function AppNavigator() {
       <Stack>
         <Stack.Screen
           name="login"
-          options={{
-            headerShown: false,
-          }}
+          options={{ headerShown: false }}
         />
 
         <Stack.Screen
           name="signup"
-          options={{
-            headerShown: false,
-          }}
+          options={{ headerShown: false }}
         />
 
         <Stack.Screen
           name="(tabs)"
-          options={{
-            headerShown: false,
-          }}
+          options={{ headerShown: false }}
         />
 
         <Stack.Screen
           name="group-setup"
-          options={{
-            headerShown: false,
-          }}
+          options={{ headerShown: false }}
         />
 
         <Stack.Screen
           name="player-profile"
-          options={{
-            title: "Player Profile",
-          }}
+          options={{ title: "Player Profile" }}
         />
 
         <Stack.Screen
           name="record-session"
-          options={{
-            title: "Record Session",
-          }}
+          options={{ title: "Record Session" }}
         />
 
         <Stack.Screen
           name="edit-session"
-          options={{
-            title: "Edit Session",
-          }}
+          options={{ title: "Edit Session" }}
         />
 
         <Stack.Screen
           name="game-sessions"
-          options={{
-            title: "Game Sessions",
-          }}
+          options={{ title: "Game Sessions" }}
         />
 
         <Stack.Screen
           name="session-details"
+          options={{ title: "" }}
+        />
+
+        <Stack.Screen
+          name="group-join-code"
           options={{
-            title: "",
+            title: "Group Join Code",
           }}
         />
       </Stack>

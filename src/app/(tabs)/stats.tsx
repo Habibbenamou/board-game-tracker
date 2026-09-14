@@ -881,9 +881,7 @@ function PodiumPlayer({
   const rankIcon =
     position === 1
       ? "trophy"
-      : position === 2
-        ? "medal-outline"
-        : "medal-outline";
+      : "medal-outline";
 
   return (
     <View
@@ -959,6 +957,15 @@ function PodiumPlayer({
         {player.name}
       </Text>
 
+      {/* Games played */}
+      <Text style={styles.podiumGames}>
+        {player.games}{" "}
+        {player.games === 1
+          ? "game"
+          : "games"}
+      </Text>
+
+      {/* Wins */}
       <Text style={styles.podiumWins}>
         {player.wins}{" "}
         {player.wins === 1
@@ -966,6 +973,7 @@ function PodiumPlayer({
           : "wins"}
       </Text>
 
+      {/* Win rate */}
       <View
         style={
           styles.podiumWinRate
@@ -1509,8 +1517,15 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  podiumWins: {
+  podiumGames: {
     marginTop: 3,
+    fontSize: 11,
+    fontWeight: "600",
+    color: colors.textSecondary,
+  },
+
+  podiumWins: {
+    marginTop: 2,
     fontSize: 11,
     color: colors.textSecondary,
   },
