@@ -25,25 +25,20 @@ import {
 import { useGroup } from "../context/GroupContext";
 
 export default function GroupSetupScreen() {
-  const {
-    refreshGroups,
-  } = useGroup();
+  const { refreshGroups } = useGroup();
 
   const [mode, setMode] = useState<
     "choose" | "create" | "join"
   >("choose");
 
-  const [groupName, setGroupName] =
-    useState("");
+  const [groupName, setGroupName] = useState("");
 
-  const [joinCode, setJoinCode] =
-    useState("");
+  const [joinCode, setJoinCode] = useState("");
 
   const [createdCode, setCreatedCode] =
     useState<string | null>(null);
 
-  const [saving, setSaving] =
-    useState(false);
+  const [saving, setSaving] = useState(false);
 
   async function handleCreateGroup() {
     const trimmedGroupName =
@@ -61,30 +56,25 @@ export default function GroupSetupScreen() {
     try {
       setSaving(true);
 
-      const group =
-        await createGroup(
-          trimmedGroupName
-        );
+      const group = await createGroup(
+        trimmedGroupName
+      );
 
       /*
-       * The group membership now exists
-       * in the database, so refresh the
-       * global GroupContext immediately.
+       * Important:
        *
-       * This is important because creating
-       * a group does not change the Supabase
-       * authentication session.
+       * Store the generated code immediately.
+       *
+       * We intentionally do NOT call refreshGroups()
+       * here. Updating GroupContext at this point can
+       * trigger the app's group routing logic before the
+       * success screen has rendered.
+       *
+       * The group already exists in Supabase, so we can
+       * safely refresh the global group state when the
+       * user presses "Continue to App".
        */
-      await refreshGroups();
-
-      setCreatedCode(
-        group.join_code
-      );
-
-      Alert.alert(
-        "Group created!",
-        `Your group "${group.name}" has been created.`
-      );
+      setCreatedCode(group.join_code);
     } catch (error) {
       console.error(
         "Error creating group:",
@@ -116,18 +106,14 @@ export default function GroupSetupScreen() {
     try {
       setSaving(true);
 
-      const group =
-        await joinGroup(
-          trimmedCode
-        );
+      const group = await joinGroup(
+        trimmedCode
+      );
 
       /*
-       * joinGroup() updates the database,
-       * but it does not change the auth
-       * session.
-       *
-       * Explicitly refresh the global group
-       * state before entering the main app.
+       * The membership now exists in the
+       * database. Refresh the global group
+       * state before entering the app.
        */
       await refreshGroups();
 
@@ -138,9 +124,7 @@ export default function GroupSetupScreen() {
           {
             text: "Continue",
             onPress: () => {
-              router.replace(
-                "/(tabs)"
-              );
+              router.replace("/(tabs)");
             },
           },
         ]
@@ -167,15 +151,13 @@ export default function GroupSetupScreen() {
       setSaving(true);
 
       /*
-       * Refresh once more before entering
-       * the app. This is cheap and makes the
-       * transition especially reliable.
+       * Now that the user has seen/copy-shared
+       * the group code, update the global group
+       * state before entering the main app.
        */
       await refreshGroups();
 
-      router.replace(
-        "/(tabs)"
-      );
+      router.replace("/(tabs)");
     } catch (error) {
       console.error(
         "Error refreshing groups:",
@@ -191,6 +173,15 @@ export default function GroupSetupScreen() {
     }
   }
 
+  /*
+   * --------------------------------------------------
+   * GROUP CREATED
+   * --------------------------------------------------
+   *
+   * This is rendered as soon as createGroup()
+   * succeeds. No GroupContext refresh happens before
+   * this screen appears.
+   */
   if (createdCode) {
     return (
       <View style={styles.container}>
@@ -213,10 +204,18 @@ export default function GroupSetupScreen() {
               Group Code
             </Text>
 
-            <Text style={styles.code}>
+            <Text
+              style={styles.code}
+              selectable
+            >
               {createdCode}
             </Text>
           </View>
+
+          <Text style={styles.codeHint}>
+            You can share this code with your
+            friends so they can join your group.
+          </Text>
 
           <TouchableOpacity
             style={[
@@ -249,6 +248,11 @@ export default function GroupSetupScreen() {
     );
   }
 
+  /*
+   * --------------------------------------------------
+   * CREATE GROUP
+   * --------------------------------------------------
+   */
   if (mode === "create") {
     return (
       <View style={styles.container}>
@@ -320,6 +324,11 @@ export default function GroupSetupScreen() {
     );
   }
 
+  /*
+   * --------------------------------------------------
+   * JOIN GROUP
+   * --------------------------------------------------
+   */
   if (mode === "join") {
     return (
       <View style={styles.container}>
@@ -405,6 +414,11 @@ export default function GroupSetupScreen() {
     );
   }
 
+  /*
+   * --------------------------------------------------
+   * CHOOSE
+   * --------------------------------------------------
+   */
   return (
     <View style={styles.container}>
       <View style={styles.centerContent}>
@@ -460,8 +474,7 @@ export default function GroupSetupScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor:
-      colors.background,
+    backgroundColor: colors.background,
     padding: spacing.xl,
     paddingTop: 80,
   },
@@ -579,5 +592,13 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 5,
     color: colors.primary,
+  },
+
+  codeHint: {
+    marginTop: spacing.md,
+    color: colors.textMuted,
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: "center",
   },
 });
