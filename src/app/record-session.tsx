@@ -40,6 +40,7 @@ import {
 } from "../services/gameService";
 
 import {
+  getMyPlayer,
   getPlayersByGroupId,
   type Player,
 } from "../services/playerService";
@@ -551,10 +552,55 @@ export default function RecordSessionScreen() {
     try {
       setSaving(true);
 
+      /*
+       * Get the Player record belonging to
+       * the currently authenticated user.
+       *
+       * created_by stores the Player ID,
+       * not the Supabase Auth user ID.
+       */
+      const currentPlayer =
+        await getMyPlayer();
+
+      if (!currentPlayer) {
+        throw new Error(
+          "Unable to find the player profile for the current user."
+        );
+      }
+
+      /*
+       * Make sure the creator actually
+       * belongs to the current group.
+       *
+       * This also protects us from creating
+       * a session with a creator from another
+       * group if the player/group state is
+       * somehow inconsistent.
+       */
+      const creatorBelongsToGroup =
+        players.some(
+          (player) =>
+            player.id ===
+            currentPlayer.id
+        );
+
+      if (!creatorBelongsToGroup) {
+        throw new Error(
+          "Your player profile does not belong to the current group."
+        );
+      }
+
       const session =
         await createGameSession({
           group_id: currentGroup.id,
           game_id: gameId,
+
+          /*
+           * Store the Player ID of the user
+           * who created the session.
+           */
+          created_by: currentPlayer.id,
+
           played_at: playedAt,
           notes:
             notes.trim() || null,

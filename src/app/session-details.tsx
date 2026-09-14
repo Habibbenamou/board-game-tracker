@@ -37,7 +37,8 @@ import {
 
 import {
   deleteSessionPlayers,
-  type SessionPlayer,
+  getSessionPlayersWithPlayers,
+  type SessionPlayerWithPlayer,
 } from "../services/sessionPlayerService";
 
 import {
@@ -46,22 +47,10 @@ import {
 } from "../services/gameService";
 
 import {
-  getPlayers,
-  type Player,
-} from "../services/playerService";
-
-import { supabase } from "../services/supabase";
-
-import {
   colors,
   radius,
   spacing,
 } from "../constants/theme";
-
-type SessionPlayerWithPlayer =
-  SessionPlayer & {
-    player: Player | null;
-  };
 
 const AnimatedPressable =
   Animated.createAnimatedComponent(Pressable);
@@ -100,11 +89,10 @@ function getPlacementIcon(
     return "trophy";
   }
 
-  if (placement === 2) {
-    return "medal-outline";
-  }
-
-  if (placement === 3) {
+  if (
+    placement === 2 ||
+    placement === 3
+  ) {
     return "medal-outline";
   }
 
@@ -386,84 +374,36 @@ export default function SessionDetailsScreen() {
     try {
       setLoading(true);
 
-      // console.log(
-      //   "Loading session details:",
-      //   id
-      // );
-
       const sessionData =
         await getGameSessionById(id);
 
-      // console.log(
-      //   "SESSION DATA:",
-      //   sessionData
-      // );
-
       /*
-       * Load the game and all players
-       * independently from the session.
+       * Load game + session players
+       * independently.
+       *
+       * getSessionPlayersWithPlayers()
+       * now handles both the session_players
+       * rows and their Player records.
        */
       const [
         gameData,
-        playersData,
+        sessionPlayersData,
       ] = await Promise.all([
         getGameById(
           sessionData.game_id
         ),
-        getPlayers(),
+        getSessionPlayersWithPlayers(id),
       ]);
 
-      /*
-       * IMPORTANT:
-       * Fetch session_players directly here.
-       *
-       * This avoids relying on getSessionPlayers()
-       * potentially filtering incorrectly.
-       */
-      const {
-        data: sessionPlayersData,
-        error: sessionPlayersError,
-      } = await supabase
-        .from("session_players")
-        .select("*")
-        .eq("session_id", id);
-
       // console.log(
-      //   "SESSION PLAYERS:",
+      //   "SESSION PLAYERS LOADED:",
       //   sessionPlayersData
-      // );
-
-      // console.log(
-      //   "SESSION PLAYERS ERROR:",
-      //   sessionPlayersError
-      // );
-
-      if (sessionPlayersError) {
-        throw sessionPlayersError;
-      }
-
-      const playersWithDetails =
-        (sessionPlayersData ?? []).map(
-          (sessionPlayer) => ({
-            ...sessionPlayer,
-            player:
-              playersData.find(
-                (player) =>
-                  player.id ===
-                  sessionPlayer.player_id
-              ) ?? null,
-          })
-        );
-
-      // console.log(
-      //   "PLAYERS WITH DETAILS:",
-      //   playersWithDetails
       // );
 
       setSession(sessionData);
       setGame(gameData);
       setSessionPlayers(
-        playersWithDetails as SessionPlayerWithPlayer[]
+        sessionPlayersData
       );
     } catch (error) {
       console.error(

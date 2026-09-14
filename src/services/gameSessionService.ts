@@ -215,6 +215,9 @@ export async function createGameSession(
 
 /**
  * Update a game session.
+ *
+ * The returned row is used to verify that
+ * the UPDATE was actually allowed by RLS.
  */
 export async function updateGameSession(
   id: string,
@@ -225,8 +228,7 @@ export async function updateGameSession(
       .from("game_sessions")
       .update(updates)
       .eq("id", id)
-      .select()
-      .single();
+      .select("*");
 
   if (error) {
     console.error(
@@ -237,26 +239,72 @@ export async function updateGameSession(
     throw error;
   }
 
-  return data;
+  /*
+   * If RLS prevents the row from being updated,
+   * Supabase can return an empty array without
+   * a normal database error.
+   */
+  if (!data || data.length === 0) {
+    const error = new Error(
+      "Game session could not be updated. " +
+      "The session may not exist or the current user " +
+      "may not be allowed to update it."
+    );
+
+    console.error(
+      "Game session update affected 0 rows:",
+      {
+        id,
+        updates,
+      }
+    );
+
+    throw error;
+  }
+
+  return data[0];
 }
 
 
 /**
  * Delete a game session.
+ *
+ * The returned row is used to verify that
+ * the DELETE was actually allowed by RLS.
  */
 export async function deleteGameSession(
   id: string
 ): Promise<void> {
-  const { error } =
+  const { data, error } =
     await supabase
       .from("game_sessions")
       .delete()
-      .eq("id", id);
+      .eq("id", id)
+      .select("id");
 
   if (error) {
     console.error(
       "Error deleting game session:",
       error
+    );
+
+    throw error;
+  }
+
+  /*
+   * With RLS enabled, DELETE can match zero rows
+   * when the row is not visible/allowed.
+   */
+  if (!data || data.length === 0) {
+    const error = new Error(
+      "Game session could not be deleted. " +
+      "The session may not exist or the current user " +
+      "may not be allowed to delete it."
+    );
+
+    console.error(
+      "Game session delete affected 0 rows:",
+      id
     );
 
     throw error;

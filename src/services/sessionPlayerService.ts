@@ -1,10 +1,15 @@
 import type {
-    Tables,
-    TablesInsert,
-    TablesUpdate,
+  Tables,
+  TablesInsert,
+  TablesUpdate,
 } from "../types/database";
 
 import { supabase } from "./supabase";
+
+import {
+  getPlayers,
+  type Player,
+} from "./playerService";
 
 export type SessionPlayer =
   Tables<"session_players">;
@@ -15,12 +20,26 @@ export type SessionPlayerInsert =
 export type SessionPlayerUpdate =
   TablesUpdate<"session_players">;
 
+export type SessionPlayerWithPlayer =
+  SessionPlayer & {
+    player: Player | null;
+  };
+
 /**
  * Get all players belonging to a session.
+ *
+ * Results are ordered by placement so the winner/
+ * highest-ranked player appears first.
  */
 export async function getSessionPlayers(
   sessionId: string
 ): Promise<SessionPlayer[]> {
+  if (!sessionId) {
+    throw new Error(
+      "Session ID is required."
+    );
+  }
+
   const { data, error } =
     await supabase
       .from("session_players")
@@ -41,6 +60,49 @@ export async function getSessionPlayers(
   }
 
   return data ?? [];
+}
+
+/**
+ * Get all players belonging to a session and
+ * attach the corresponding player record.
+ *
+ * This keeps the relationship logic inside the
+ * service instead of every screen having to
+ * manually combine session_players + players.
+ */
+export async function getSessionPlayersWithPlayers(
+  sessionId: string
+): Promise<SessionPlayerWithPlayer[]> {
+  if (!sessionId) {
+    throw new Error(
+      "Session ID is required."
+    );
+  }
+
+  const [
+    sessionPlayers,
+    players,
+  ] = await Promise.all([
+    getSessionPlayers(sessionId),
+    getPlayers(),
+  ]);
+
+  const playersById = new Map(
+    players.map((player) => [
+      player.id,
+      player,
+    ])
+  );
+
+  return sessionPlayers.map(
+    (sessionPlayer) => ({
+      ...sessionPlayer,
+      player:
+        playersById.get(
+          sessionPlayer.player_id
+        ) ?? null,
+    })
+  );
 }
 
 /**
@@ -66,6 +128,36 @@ export async function createSessionPlayer(
   }
 
   return data;
+}
+
+/**
+ * Add multiple players to a game session.
+ *
+ * Useful when recording a new session.
+ */
+export async function createSessionPlayers(
+  sessionPlayers: SessionPlayerInsert[]
+): Promise<SessionPlayer[]> {
+  if (sessionPlayers.length === 0) {
+    return [];
+  }
+
+  const { data, error } =
+    await supabase
+      .from("session_players")
+      .insert(sessionPlayers)
+      .select();
+
+  if (error) {
+    console.error(
+      "Error creating session players:",
+      error
+    );
+
+    throw error;
+  }
+
+  return data ?? [];
 }
 
 /**
@@ -126,6 +218,12 @@ export async function deleteSessionPlayer(
 export async function deleteSessionPlayers(
   sessionId: string
 ): Promise<void> {
+  if (!sessionId) {
+    throw new Error(
+      "Session ID is required."
+    );
+  }
+
   const { error } =
     await supabase
       .from("session_players")

@@ -1,56 +1,182 @@
-# Welcome to your Expo app 👋
+# 🎲 Board Game Tracker
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A mobile app for managing and tracking board game sessions with friends and groups.
 
-## Get started
+The goal of Board Game Tracker is to make it easy to keep track of board games, players, groups, sessions, wins and statistics in one place.
 
-1. Install dependencies
+## ✨ Current Features
 
-   ```bash
-   npm install
-   ```
+* 🔐 User authentication
+* 👤 Player profiles
+* 👥 Create and join groups
+* 🎟️ Group join codes
+* 🎲 Board game management
+* ➕ Add, edit and delete games
+* 🖼️ Game images
+* 📝 Record game sessions
+* 🏆 Track winners and player results
+* 📊 Basic game and player statistics
+* 📜 Session history
+* 📱 Mobile-first interface
+* 🌙 Dark UI
 
-2. Start the app
+## 🛠️ Tech Stack
 
-   ```bash
-   npx expo start
-   ```
+* **React Native**
+* **Expo**
+* **Expo Router**
+* **TypeScript**
+* **Supabase**
 
-In the output, you'll find options to open the app in a
+  * Authentication
+  * PostgreSQL database
+  * Storage
+  * Row Level Security (RLS)
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## 🚀 Setup
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+### 1. Clone the repository
 
 ```bash
-npm run reset-project
+git clone <REPOSITORY_URL>
+cd BGT
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 2. Install dependencies
 
-### Other setup steps
+```bash
+npm install
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+### 3. Configure Supabase
 
-## Learn more
+Create a Supabase project and configure the required database tables, authentication and storage.
 
-To learn more about developing your project with Expo, look at the following resources:
+Create a `.env` file in the project root:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```env
+EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-## Join the community
+> Do not commit your `.env` file or expose private Supabase credentials.
 
-Join our community of developers creating universal apps.
+### 4. Start the development server
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```bash
+npx expo start
+```
+
+You can then run the application using Expo Go or an available development device/emulator.
+
+## 📱 Android
+
+To run the Android version locally:
+
+```bash
+npx expo run:android
+```
+
+For a release build:
+
+```bash
+npx expo run:android --device --variant release
+```
+
+## 📦 First APK
+
+The first Android build of Board Game Tracker is available here:
+
+**[Download the first APK](APK_DOWNLOAD_LINK)**
+
+## 🗺️ Roadmap
+
+Board Game Tracker is still under active development. The following **focus areas** represent potential future improvements rather than a fixed development order. Features may be moved, combined, reprioritized or added as the application evolves and new needs are discovered.
+
+### 🔧 Focus Area — Foundation & Stability
+
+* Improve overall application stability
+* Fix remaining bugs and edge cases
+* Improve error handling
+* Clean up and improve service architecture
+* Improve data validation and error recovery
+
+### 📊 Focus Area — Core Experience
+
+* More detailed player and game statistics
+* Calendar for played sessions
+* Play-session heat map
+* Create and manage hangout plans
+* Plan games for upcoming sessions
+* Wishlist for games
+* Random game picker
+
+### 📡 Focus Area — Offline Mode
+
+* Access the application without an internet connection
+* Cache frequently used application data
+* View previously loaded games, players and sessions
+* Create and save sessions while offline
+* Queue changes while offline
+* Synchronize changes automatically when the connection is restored
+* Handle synchronization errors and conflicts
+
+### 🔔 Focus Area — Notifications & Social Features
+
+* Upcoming hangout reminders
+* Session invitations
+* Group activity notifications
+* Achievement notifications
+
+### 🏆 Focus Area — Achievements & Engagement
+
+* Personal achievements
+* Group achievements
+* Awards and milestones
+* Win streaks
+* Play streaks
+* Monthly and yearly challenges
+* Most active player
+* Most-played games
+
+### 🎮 Focus Area — Advanced Game Tools
+
+* Live game tracker
+* Game-specific tools
+* Advanced session tracking
+
+### ⚡ Focus Area — Optimization & Technical Improvements
+
+Once the application's features and offline architecture are more mature, additional optimization work can be performed based on actual usage and performance needs.
+
+* Optimize database queries
+* Improve caching strategies
+* Optimize service-layer operations
+* Reduce unnecessary component re-renders
+* Reduce memory and battery usage
+* Refactor and simplify parts of the codebase where needed
+* Improve overall application responsiveness
+
+## 🔮 Future Ideas
+
+Additional features may be explored as the project evolves:
+
+* 📈 Personal gaming profile
+* 🔥 Gaming streaks
+* 🏅 Seasonal challenges
+* 📸 Session photos
+* 💬 Group chat or session comments
+* 🤖 Game recommendations
+* 📤 Export statistics
+
+## 📌 Project Status
+
+**Early Development — First Version**
+
+Board Game Tracker is an evolving personal project focused on making board game sessions easier to organize, track and enjoy with friends.
+
+The application will continue to evolve through new features, stability improvements and technical improvements.
+
+## 📄 License
+
+This project is currently intended for personal and educational use.

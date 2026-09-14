@@ -10,6 +10,7 @@
     "@supabase/supabase-js": "^2.112.3",
     "base64-arraybuffer": "^1.0.2",
     "expo": "~57.0.12",
+    "expo-clipboard": "~57.0.2",
     "expo-constants": "~57.0.10",
     "expo-device": "~57.0.1",
     "expo-file-system": "~57.0.5",
