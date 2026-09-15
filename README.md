@@ -87,7 +87,7 @@ npx expo run:android --device --variant release
 
 The first Android build of Board Game Tracker is available here:
 
-**[Download the first APK]([APK_DOWNLOAD_LINK](https://drive.google.com/file/d/1XJQps3FgA50miT8n6cZ1x44QeA-hdlXb/view?usp=sharing))**
+**[Download the first APK](https://drive.google.com/file/d/1XJQps3FgA50miT8n6cZ1x44QeA-hdlXb/view?usp=sharing)**
 
 ## 🗺️ Roadmap
 
